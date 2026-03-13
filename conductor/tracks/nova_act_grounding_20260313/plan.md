@@ -4,7 +4,7 @@
 - [x] Task: Scaffold the Nova Act service wrapper for AWS Bedrock [e8478d0]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Implement basic search tool schema and mock search provider
+- [x] Task: Implement basic search tool schema and mock search provider [4f25d85]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Nova Act Foundation & Search Service' (Protocol in workflow.md)
