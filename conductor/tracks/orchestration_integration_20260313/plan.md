@@ -19,7 +19,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Memory Optimization & Goal Management' (Protocol in workflow.md) [3f94a2c]
 
 ## Phase 3: Proactive Orchestration Loop
-- [ ] Task: Connect capture triggers to `novaVision` and `orchestrator`
+- [x] Task: Connect capture triggers to `novaVision` and `orchestrator` [f06514a]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Implement proactive feedback trigger (Earcon + Speech + Overlay)
