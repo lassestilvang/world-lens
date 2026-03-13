@@ -13,7 +13,7 @@
 - [x] Task: Update the central orchestrator to support async tool calling via Nova 2 Sonic [54b32ac]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Implement tool trigger logic for Grocery and Medical scenarios
+- [x] Task: Implement tool trigger logic for Grocery and Medical scenarios [61fac06]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Orchestration & Tool Calling' (Protocol in workflow.md)
