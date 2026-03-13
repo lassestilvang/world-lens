@@ -7,7 +7,7 @@ export interface OrchestrationContext {
 
 export interface ToolCallResult {
   tool: string;
-  args: any;
+  args: unknown;
 }
 
 export interface GroundedResult {
@@ -42,15 +42,16 @@ export async function orchestrateToolCall(context: OrchestrationContext): Promis
  */
 export async function triggerGroundingTool(context: OrchestrationContext): Promise<GroundedResult> {
   const orchestrated = await orchestrateToolCall(context);
-  let rawResult: any;
 
   if (orchestrated.tool === GROCERY_TOOL_SCHEMA.name) {
-    rawResult = await searchGroceryPrice(orchestrated.args.item);
+    const args = orchestrated.args as { item: string };
+    const rawResult = await searchGroceryPrice(args.item) as { item: string; price: string; source: string };
     return {
       verified_fact: `Verified: The price of ${rawResult.item} is ${rawResult.price} (via ${rawResult.source}).`
     };
   } else if (orchestrated.tool === MEDICAL_TOOL_SCHEMA.name) {
-    rawResult = await searchMedicalDatabase(orchestrated.args.drug);
+    const args = orchestrated.args as { drug: string };
+    const rawResult = await searchMedicalDatabase(args.drug) as { drug: string; indications: string; warnings: string; source: string };
     return {
       verified_fact: `Verified: ${rawResult.drug} is used for ${rawResult.indications}. Warnings: ${rawResult.warnings} (via ${rawResult.source}).`
     };

@@ -5,7 +5,7 @@ const client = new BedrockRuntimeClient({ region: 'us-east-1' });
 export interface NovaActTool {
   name: string;
   description: string;
-  input_schema: any;
+  input_schema: unknown;
 }
 
 export interface NovaActMessage {
@@ -19,7 +19,7 @@ export interface NovaActMessage {
  * @param tools Available tools for the model
  * @returns The model's response, potentially including tool calls
  */
-export async function invokeNovaAct(messages: NovaActMessage[], tools: NovaActTool[]): Promise<any> {
+export async function invokeNovaAct(messages: NovaActMessage[], tools: NovaActTool[]): Promise<unknown> {
   if (!messages || messages.length === 0) {
     throw new Error('Messages are required');
   }
