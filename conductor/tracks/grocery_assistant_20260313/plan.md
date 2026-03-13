@@ -1,7 +1,7 @@
 # Implementation Plan: Build core grocery store assistant scenario
 
 ## Phase 1: Project Setup & Next.js Scaffold
-- [~] Task: Scaffold Next.js project and UI shell
+- [x] Task: Scaffold Next.js project and UI shell [60ed056]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Setup WebRTC audio streaming and camera capture (MediaDevices)
