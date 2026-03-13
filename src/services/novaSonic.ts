@@ -1,6 +1,6 @@
-import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
+import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 
-const client = new BedrockRuntimeClient({ region: "us-east-1" });
+const client = new BedrockRuntimeClient({ region: 'us-east-1' });
 
 export interface VoiceResponse {
   audioBuffer: Buffer;
@@ -15,17 +15,17 @@ export async function generateSpeechResponse(inputPrompt: string, memoryContext:
   // In a real application, we would call Nova 2 Sonic here via Bedrock
   /*
   const command = new InvokeModelCommand({
-    modelId: "amazon.nova-sonic-v1:0",
-    contentType: "application/json",
-    accept: "application/json",
+    modelId: 'amazon.nova-sonic-v1:0',
+    contentType: 'application/json',
+    accept: 'application/json',
     body: JSON.stringify({
       messages: [
         {
-          role: "system",
+          role: 'system',
           content: `You are an AI assistant. Use the following context to answer the user.\n\n${memoryContext}`
         },
         {
-          role: "user",
+          role: 'user',
           content: inputPrompt
         }
       ]

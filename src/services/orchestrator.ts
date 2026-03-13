@@ -1,4 +1,4 @@
-import { SceneAnalysis } from './novaVision'
+import { SceneAnalysis } from './novaVision';
 
 interface SessionMemory {
   environment: string;
@@ -18,10 +18,10 @@ export async function evaluateProactiveSuggestion(
   // Simple heuristic for hackathon MVP:
   // If the user's goal contains keywords that match new objects, trigger a suggestion.
   
-  const userGoalTokens = memory.user_goal.toLowerCase().split(' ')
+  const userGoalTokens = memory.user_goal.toLowerCase().split(' ');
   
   for (const object of currentAnalysis.objects) {
-    const objectLower = object.toLowerCase()
+    const objectLower = object.toLowerCase();
     
     // Simple naive string matching for the mock
     // E.g., user_goal: "find healthy cereal", new object: "Oatmeal"
@@ -33,9 +33,9 @@ export async function evaluateProactiveSuggestion(
         return {
           shouldSuggest: true,
           suggestionPrompt: `The user previously asked about ${memory.user_goal}. Explain why the newly spotted ${object} might be relevant.`
-        }
+        };
     }
   }
 
-  return { shouldSuggest: false }
+  return { shouldSuggest: false };
 }

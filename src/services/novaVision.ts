@@ -1,6 +1,6 @@
-import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
+import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 
-const client = new BedrockRuntimeClient({ region: "us-east-1" });
+const client = new BedrockRuntimeClient({ region: 'us-east-1' });
 
 export interface SceneAnalysis {
   objects: string[];
@@ -18,15 +18,15 @@ export async function analyzeFrame(base64Image: string): Promise<SceneAnalysis> 
   
   /*
   const command = new InvokeModelCommand({
-    modelId: "amazon.nova-lite-v1:0",
-    contentType: "application/json",
-    accept: "application/json",
+    modelId: 'amazon.nova-lite-v1:0',
+    contentType: 'application/json',
+    accept: 'application/json',
     body: JSON.stringify({
       messages: [
         {
-          role: "user",
+          role: 'user',
           content: [
-            { image: { format: "jpeg", source: { bytes: base64Image } } },
+            { image: { format: 'jpeg', source: { bytes: base64Image } } },
             { text: "Analyze the image. Return JSON with 'objects', 'text', and 'environment'." }
           ]
         }

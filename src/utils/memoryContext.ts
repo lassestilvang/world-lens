@@ -28,8 +28,8 @@ export function addObservationToMemory(
  */
 export function buildMemoryContext(memory: string[]): string {
   if (memory.length === 0) {
-    return "No recent observations.";
+    return 'No recent observations.';
   }
   
-  return "Recent observations:\n" + memory.map(m => `- ${m}`).join("\n");
+  return 'Recent observations:\n' + memory.map(m => `- ${m}`).join('\n');
 }
