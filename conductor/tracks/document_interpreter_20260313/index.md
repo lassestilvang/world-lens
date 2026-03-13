@@ -1,4 +1,4 @@
-# Track grocery_assistant_20260313 Context
+# Track document_interpreter_20260313 Context
 
 - [Specification](./spec.md)
 - [Implementation Plan](./plan.md)
