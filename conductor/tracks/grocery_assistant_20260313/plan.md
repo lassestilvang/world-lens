@@ -31,7 +31,7 @@
 - [x] Task: Integrate Amazon Nova 2 Sonic for real-time speech [57a2801]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [~] Task: Implement async tool use for proactive suggestions and memory checks
+- [x] Task: Implement async tool use for proactive suggestions and memory checks [609cfb1]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Conversational Voice Orchestration' (Protocol in workflow.md)
