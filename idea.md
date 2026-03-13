@@ -13,7 +13,8 @@ The system combines:
 
 - **live camera input**
 - **real-time speech interaction**
-- **multimodal reasoning** (Nova 2 Pro)
+- **multimodal reasoning** (Nova 2 Lite)
+- **real-time voice orchestration** (Nova 2 Sonic with async tool use)
 - **persistent environmental memory** (Multi-Agent architecture)
 - **grounded action** (Nova Act integration)
 
@@ -244,25 +245,27 @@ AI:
 ## High Level Architecture
 
 ```
-Mobile Web App
+Mobile Web App (Camera + Microphone)
+    │
+    ├── Audio stream ──► Nova 2 Sonic (Orchestrator)
+    │                        │
+    │                        ├── tool call: analyze_frame ──► Nova 2 Lite (Vision)
+    │                        │                                    │
+    │                        │◄── scene description ◄────────────┘
+    │                        │
+    │                        ├── tool call: update_memory ──► Memory Curator (Nova 2 Lite)
+    │                        │
+    │                        ├── tool call: ground_fact ──► Grounding Agent (Nova Act)
+    │                        │
+    │                        └── speaks response directly to user (no Polly)
     │
     ▼
-AWS AppSync / API Gateway
-    │
-    ▼
-Orchestration Layer (Strands Agents)
-    │
-    ├── Vision Scene Agent (Nova 2 Pro / Lite)
-    │
-    ├── Memory Curator Agent (Nova 2 Lite)
-    │
-    ├── Grounding Agent (Nova Act)
-    │
-    └── Conversational Voice Agent (Nova 2 Sonic)
-    │
-    ▼
-User
+User hears AI response in real time
 ```
+
+Nova 2 Sonic acts as the **central orchestrator** via its native async tool use capability.
+It receives speech, invokes vision/memory/grounding tools mid-conversation, and speaks
+the response directly — all within a single bidirectional streaming session.
 
 ---
 
@@ -308,39 +311,30 @@ Accessed through Amazon Bedrock.
 
 Primary models:
 
-### Vision & Deep Reasoning
-
-**Amazon Nova 2 Pro**
-
-Used for:
-
-* complex scene understanding
-* document interpretation and logical extraction
-* high-confidence object identification
-
----
-
-### Real-Time Interaction & Orchestration
+### Central Orchestrator & Voice
 
 **Amazon Nova 2 Sonic**
 
 Used for:
 
-* ultra-low latency conversational logic
-* direct speech understanding and generation
-* real-time orchestration of agent state
+* speech-to-speech conversational interface (replaces Polly entirely)
+* central orchestrator via native async tool use
+* invokes vision, memory, and grounding tools mid-conversation
+* handles interruptions, turn-taking, and background noise natively
 
 ---
 
-### Efficiency & Summarization
+### Vision, Reasoning & Memory
 
 **Amazon Nova 2 Lite**
 
 Used for:
 
-* background memory curation
-* scene summarization
-* context compression
+* multimodal scene understanding (accepts image, video, and text input)
+* document interpretation and logical extraction
+* high-confidence object identification with extended thinking
+* background memory curation and context compression
+* 1M token context window enables rich environmental history
 
 ---
 
@@ -401,7 +395,7 @@ Camera Frame
 Client-Side Smart Sampling (Motion/VAD)
       │
       ▼
-Image Analysis (Nova Pro)
+Image Analysis (Nova 2 Lite via Sonic tool call)
       │
       ▼
 Scene Summary
@@ -413,10 +407,10 @@ Context Builder (Summarizes older objects)
 World Memory Update
       │
       ▼
-Conversation Reasoning
+Conversation Reasoning (Nova 2 Sonic)
       │
       ▼
-Voice Response (Amazon Polly)
+Voice Response (Nova 2 Sonic — native speech output)
 ```
 
 ---
@@ -520,10 +514,10 @@ Instead of blindly sending 1-2 frames per second (which causes lag and high API 
 - **Motion Detection:** Sends a new frame only when the camera stabilizes on a new scene after movement.
 
 **2. Voice Interaction:**
-Real-time streaming via WebRTC/WebSockets directly to **Nova 2 Sonic**.
+Real-time bidirectional streaming directly to **Nova 2 Sonic**. No separate TTS service (Polly) needed — Sonic handles speech understanding and generation natively in a single session.
 
 **3. Latency Target:**
-Sub-1.5 seconds for analysis to spoken response, leveraging Nova 2 Sonic's native speed.
+Sub-1.5 seconds for analysis to spoken response, leveraging Nova 2 Sonic's native speed and async tool execution (Sonic can begin speaking while tools finish processing).
 
 ---
 
@@ -593,9 +587,8 @@ Backend
 AI
 
 * Amazon Bedrock
-* Amazon Nova 2 Pro (Vision/Logical Extraction)
-* Amazon Nova 2 Sonic (Voice Interaction/Orchestration)
-* Amazon Nova 2 Lite (Summarization/Curation)
+* Amazon Nova 2 Sonic (Voice Orchestrator — speech-to-speech, async tool use)
+* Amazon Nova 2 Lite (Vision, Reasoning, Memory — multimodal input, extended thinking)
 * Amazon Nova Act (Grounding/External Action)
 * AWS Strands Agents (Multi-agent orchestration)
 
@@ -617,7 +610,7 @@ WorldLens demonstrates **three frontier AI capabilities simultaneously**:
 
 ### Multimodal perception
 
-AI understands images, text, and speech natively using Amazon Nova 2 models.
+AI understands images, text, and speech natively using Amazon Nova 2 Lite (vision/reasoning) and Nova 2 Sonic (voice). All models are GA — no gated preview access required.
 
 ### Agentic Orchestration
 
