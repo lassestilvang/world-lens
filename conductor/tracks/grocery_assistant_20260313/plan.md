@@ -4,7 +4,7 @@
 - [x] Task: Scaffold Next.js project and UI shell [60ed056]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [~] Task: Setup WebRTC audio streaming and camera capture (MediaDevices)
+- [x] Task: Setup WebRTC audio streaming and camera capture (MediaDevices) [d249a4e]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Project Setup & Next.js Scaffold' (Protocol in workflow.md)
