@@ -1,13 +1,13 @@
 # Implementation Plan: Build core grocery store assistant scenario
 
-## Phase 1: Project Setup & Next.js Scaffold
+## Phase 1: Project Setup & Next.js Scaffold [checkpoint: ce45c6d]
 - [x] Task: Scaffold Next.js project and UI shell [60ed056]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [x] Task: Setup WebRTC audio streaming and camera capture (MediaDevices) [d249a4e]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Project Setup & Next.js Scaffold' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Project Setup & Next.js Scaffold' (Protocol in workflow.md) [ce45c6d]
 
 ## Phase 2: Multimodal Scene Understanding
 - [ ] Task: Implement smart frame sampling (motion/VAD)
