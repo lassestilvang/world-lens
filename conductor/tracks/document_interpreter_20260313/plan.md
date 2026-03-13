@@ -19,7 +19,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Document Summarization & Entity Extraction' (Protocol in workflow.md) [6e543ce]
 
 ## Phase 3: Conversational Q&A & Safety Guardrails
-- [ ] Task: Implement Q&A engine for document-specific context
+- [x] Task: Implement Q&A engine for document-specific context [3c6534b]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Add safety disclaimers and uncertainty handling for documents
