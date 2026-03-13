@@ -4,7 +4,7 @@
 - [x] Task: Implement Canvas-based frame capture in `CameraStream` [708512f]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Wire `FrameSampler` into the video stream loop
+- [x] Task: Wire `FrameSampler` into the video stream loop [56a4904]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Frontend Capture & Sampling Integration' (Protocol in workflow.md)
