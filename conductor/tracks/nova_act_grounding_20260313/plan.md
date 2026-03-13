@@ -10,7 +10,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Nova Act Foundation & Search Service' (Protocol in workflow.md) [ba0f49c]
 
 ## Phase 2: Orchestration & Tool Calling
-- [ ] Task: Update the central orchestrator to support async tool calling via Nova 2 Sonic
+- [x] Task: Update the central orchestrator to support async tool calling via Nova 2 Sonic [54b32ac]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Implement tool trigger logic for Grocery and Medical scenarios
