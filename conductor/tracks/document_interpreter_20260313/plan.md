@@ -22,7 +22,7 @@
 - [x] Task: Implement Q&A engine for document-specific context [3c6534b]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Add safety disclaimers and uncertainty handling for documents
+- [x] Task: Add safety disclaimers and uncertainty handling for documents [7e4a7db]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Conversational Q&A & Safety Guardrails' (Protocol in workflow.md)
