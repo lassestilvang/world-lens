@@ -18,14 +18,14 @@
     - [ ] Implement Feature
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Document Summarization & Entity Extraction' (Protocol in workflow.md) [6e543ce]
 
-## Phase 3: Conversational Q&A & Safety Guardrails
+## Phase 3: Conversational Q&A & Safety Guardrails [checkpoint: e229e08]
 - [x] Task: Implement Q&A engine for document-specific context [3c6534b]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [x] Task: Add safety disclaimers and uncertainty handling for documents [7e4a7db]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Conversational Q&A & Safety Guardrails' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Conversational Q&A & Safety Guardrails' (Protocol in workflow.md) [e229e08]
 
 ## Phase 4: UI Enhancements for Document Mode
 - [ ] Task: Add visual feedback for document capture (e.g., guide overlays)
