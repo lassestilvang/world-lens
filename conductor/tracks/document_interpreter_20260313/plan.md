@@ -1,7 +1,7 @@
 # Implementation Plan: Document Interpreter
 
 ## Phase 1: High-Precision OCR & Text Extraction
-- [ ] Task: Implement document-specific framing and capture logic
+- [x] Task: Implement document-specific framing and capture logic [e1f0540]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Integrate Amazon Nova 2 Lite for document text extraction (OCR)
