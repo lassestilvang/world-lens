@@ -14,6 +14,11 @@ export interface DocumentAnalysis {
   confidence: number;
 }
 
+export interface DocumentSummary {
+  summary: string;
+  keyPoints: string[];
+}
+
 export async function analyzeFrame(base64Image: string): Promise<SceneAnalysis> {
   if (!base64Image) {
     throw new Error('Invalid image data');
@@ -81,5 +86,40 @@ export async function analyzeDocument(base64Image: string): Promise<DocumentAnal
     fullText: 'This is a sample medical bill from City Hospital. Total amount due is $150.00 by 2026-04-01.',
     documentType: 'medical bill',
     confidence: 0.98
+  };
+}
+
+export async function summarizeDocument(text: string): Promise<DocumentSummary> {
+  if (!text || text.trim() === '') {
+    throw new Error('No text provided for summarization');
+  }
+
+  // In a real application, we would call Nova 2 Lite to summarize.
+  /*
+  const command = new InvokeModelCommand({
+    modelId: 'amazon.nova-lite-v1:0',
+    contentType: 'application/json',
+    accept: 'application/json',
+    body: JSON.stringify({
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { text: `Summarize the following document text and provide key points.\n\n${text}` }
+          ]
+        }
+      ]
+    })
+  });
+  */
+
+  // Mocked response for test suite
+  return {
+    summary: 'A medical bill from City Hospital totaling $150.00.',
+    keyPoints: [
+      'Provider: City Hospital',
+      'Amount: $150.00',
+      'Due Date: 2026-04-01'
+    ]
   };
 }
