@@ -22,7 +22,7 @@
 - [x] Task: Setup DynamoDB schemas for session memory [945d902]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Implement memory context builder and summarization logic
+- [~] Task: Implement memory context builder and summarization logic
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Persistent Memory' (Protocol in workflow.md)
