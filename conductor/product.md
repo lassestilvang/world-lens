@@ -1,36 +1,21 @@
 # Initial Concept
 
-WorldLens is a real-time multimodal AI assistant that sees the world through a camera and explains it conversationally through voice. It combines live camera input, real-time speech interaction, multimodal reasoning, and persistent environmental memory to provide proactive assistance in a live voice session.
+WorldLens is a real-time multimodal AI assistant that sees the world through a camera and explains it conversationally through voice. It combines live camera input, real-time speech interaction, multimodal reasoning (Nova 2 Lite), real-time voice orchestration (Nova 2 Sonic), persistent environmental memory, and grounded action (Nova Act) to interpret environments, documents, objects, and situations. The hackathon MVP scope focuses on a Grocery Store Assistant scenario.
 
----
+## Product Vision
+WorldLens is a real-time multimodal AI assistant designed to behave as an intelligent companion that understands the real world. By combining live camera input, real-time conversational voice interaction, and persistent environmental memory, it helps users interpret environments, read documents, identify objects, and make decisions without needing to constantly look at a screen.
 
-# Product Guide: WorldLens
+## Target Audience
+- Visually impaired users who need assistance navigating and understanding their surroundings.
+- General users facing complex visual information (e.g., medical labels, dense documents).
+- Shoppers who need quick, hands-free product comparisons and guidance.
 
-## 1. Product Vision
-**WorldLens** is a real-time multimodal AI assistant that understands and explains the physical world conversationally. It transcends static image analysis by providing continuous situational awareness, persistent environmental memory, and proactive assistance through a live voice interface.
+## Core Value Proposition
+Unlike static visual analysis tools, WorldLens maintains a continuous context of the environment. It doesn't just answer questions about a single image; it remembers what it has seen, understands user goals, and proactively offers relevant observations—all through a low-latency, natural voice interface.
 
-## 2. Problem Statement
-Many people, particularly those with visual impairments or in time-sensitive situations, struggle to quickly interpret complex visual information—such as medication instructions, store shelves, or legal documents. Current AI tools often lack situational awareness, memory of previously observed data, and a natural, hands-free conversational interface.
-
-## 3. Target Users
-- **Visually Impaired Individuals:** Navigating environments, reading labels, and identifying hazards.
-- **Shoppers:** Comparing products, finding healthy options, and managing grocery lists in real-time.
-- **General Users:** Quickly summarizing complex documents, verifying medication safety, and exploring unfamiliar spaces.
-
-## 4. Key Product Goals
-- **Real-Time Interaction:** Sub-1.5s latency from speech/image capture to spoken response.
-- **Persistent Memory:** Maintaining an evolving "world model" of the user's surroundings.
-- **Proactive Assistance:** Offering useful observations based on user goals and historical context without being prompted.
-- **Safe & Reliable Reasoning:** Implementing strict guardrails for high-stakes information like medical dosage.
-
-## 5. Core Capabilities (MVP)
-- **Multimodal Scene Understanding:** Identifying objects and text in camera frames.
-- **Conversational Voice Interface:** Natural speech-to-speech interaction.
-- **World Memory System:** Tracking observed objects and user goals over time.
-- **Proactive Observation Engine:** Notifying users of relevant information (e.g., "Earlier you asked about gluten-free; I see oats over here.").
-- **Non-Visual Feedback (Earcons):** Subtle audio cues to communicate system state (e.g., processing, listening).
-
-## 6. Success Metrics
-- **p95 Latency:** <= 1.5 seconds for spoken responses.
-- **Extraction Precision:** >= 85% for scene understanding.
-- **Safety Compliance:** 100% adherence to safety-critical refusal policies (e.g., blurry medication labels).
+## Key Features (Hackathon MVP)
+- **Multimodal Scene Understanding:** Real-time extraction of objects, text, and environmental context using Amazon Nova 2 Lite.
+- **Conversational Voice Interface:** Seamless speech-to-speech interaction powered by Amazon Nova 2 Sonic.
+- **Persistent World Memory:** Tracks previously observed items and user goals to enable reasoning across time.
+- **Proactive Assistance:** Automatically suggests relevant information (e.g., finding a healthier product option) based on accumulated context without needing a specific prompt.
+- **Grocery Store Scenario:** A focused, polished end-to-end flow demonstrating object identification, product comparison, and proactive memory-based suggestions.

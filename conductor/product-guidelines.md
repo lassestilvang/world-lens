@@ -1,29 +1,15 @@
-# Product Guidelines: WorldLens
+# Product Guidelines
 
-## 1. Interaction Design (Voice & Audio)
-- **Concise Responses:** Prioritize brevity in spoken responses to reduce cognitive load, especially in high-stress or time-sensitive situations.
-- **Hands-Free Priority:** Assume the user's hands are occupied (e.g., holding a white cane or groceries). Minimize the need for physical screen interaction.
-- **Audio Feedback (Earcons):**
-    - **Soft Chime:** Indicates a proactive observation is ready.
-    - **Subtle Click:** Confirms a frame has been successfully processed.
-    - **Listening Tone:** Signals the system is active and ready for user speech.
-- **Natural Turn-Taking:** Implement intelligent Voice Activity Detection (VAD) to handle interruptions gracefully and avoid talking over the user.
+## 1. Design & UX Principles
+- **Accessibility First:** Prioritize clear audio feedback (earcons) and spoken responses. The UI should be minimal, requiring only the camera and microphone, with high-contrast text for debugging and settings.
+- **Low Latency:** Optimize for a "snappy" voice experience (sub-1.5s latency). Provide immediate audio feedback when processing to avoid dead air.
+- **Safety & Clarity:** The AI must explicitly state when it is uncertain. Refuse to guess blurry text, especially in medical or safety-critical situations.
+- **Proactive but Non-Intrusive:** The assistant should offer helpful proactive observations but must not interrupt the user while they are speaking.
 
-## 2. Visual Strategy & Interpretation
-- **Smart Sampling:** Only capture and process frames when motion stabilizes or when triggered by user speech (VAD).
-- **Scene Descriptions:** Focus on the most relevant information first (e.g., "A step is ahead" vs. "There's a blue car parked on the street").
-- **Safety-Critical Refusal:** If a scene or text is blurry, the AI must explicitly state its inability to read it clearly rather than guessing.
+## 2. Voice & Tone
+- **Tone:** Helpful, concise, confident but appropriately cautious. Never robotic; strive for a conversational companion feel.
+- **Language:** Use clear, simple language without unnecessary jargon. Provide direct answers before explaining reasoning.
 
-## 3. Reliability & Trust
-- **Confidence Thresholds:** Do not speak about objects or text with a confidence score below 85% for general info and 95% for safety-critical info.
-- **Uncertainty Language:** Use phrases like "I think," "It appears to be," or "I'm not entirely sure, but..." when confidence is between 85-90%.
-- **Source Grounding:** When using external tools (e.g., Nova Act), explicitly state if a fact was verified against a real-world database.
-
-## 4. Proactive Behavior
-- **Goal-Relevance:** Only provide proactive observations if they directly support the current user goal (e.g., finding healthy food).
-- **Cooldown Periods:** Enforce a minimum 15-second gap between proactive interruptions to avoid being overwhelming.
-
-## 5. Privacy & Ethics
-- **Transient Processing:** Raw camera frames and audio should be processed in memory and deleted immediately after reasoning is complete.
-- **Minimal PII:** Avoid extracting or storing personally identifiable information (PII) unless essential for the requested task.
-- **User Agency:** Allow the user to "Silence" or "Clear Memory" at any time through simple voice commands.
+## 3. Branding & Aesthetics
+- **Visual Identity:** Clean, dark-mode preferred interface to save battery and reduce glare while using the camera.
+- **Feedback:** Use subtle, non-distracting audio cues (chimes, clicks) to indicate listening, processing, or ready states.
