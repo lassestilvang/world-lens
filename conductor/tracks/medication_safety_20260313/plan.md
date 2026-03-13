@@ -22,7 +22,7 @@
 - [x] Task: Implement mandatory disclaimer and scope-limiting refusal logic [f7f8a8c]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Integrate grounding results into the conversational response stream
+- [x] Task: Integrate grounding results into the conversational response stream [492b52e]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Safety-First Conversational Logic' (Protocol in workflow.md)
