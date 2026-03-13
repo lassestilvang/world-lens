@@ -18,14 +18,14 @@
     - [ ] Implement Feature
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Orchestration & Tool Calling' (Protocol in workflow.md) [acc40a0]
 
-## Phase 3: Attribution & Fallback Logic
+## Phase 3: Attribution & Fallback Logic [checkpoint: 25f5baf]
 - [x] Task: Implement source attribution formatting for conversational responses [edd4b3e]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [x] Task: Create fallback handlers for grounding timeouts or missing results [9530d72]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Attribution & Fallback Logic' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Attribution & Fallback Logic' (Protocol in workflow.md) [25f5baf]
 
 ## Phase 4: Integration Verification (Multi-Scenario)
 - [ ] Task: Perform end-to-end integration tests for Grocery grounding
