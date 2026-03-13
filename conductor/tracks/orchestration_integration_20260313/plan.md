@@ -1,7 +1,7 @@
 # Implementation Plan: End-to-End Orchestration Integration
 
 ## Phase 1: Frontend Capture & Sampling Integration
-- [ ] Task: Implement Canvas-based frame capture in `CameraStream`
+- [x] Task: Implement Canvas-based frame capture in `CameraStream` [708512f]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Wire `FrameSampler` into the video stream loop
