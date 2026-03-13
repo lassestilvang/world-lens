@@ -4,7 +4,7 @@
 - [x] Task: Implement medication-specific OCR prompt and confidence gating [d162bcb]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Integrate Nova 2 Lite for medication label extraction
+- [x] Task: Integrate Nova 2 Lite for medication label extraction [93246a9]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: High-Confidence Medication OCR' (Protocol in workflow.md)
