@@ -10,7 +10,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Project Setup & Next.js Scaffold' (Protocol in workflow.md) [ce45c6d]
 
 ## Phase 2: Multimodal Scene Understanding
-- [ ] Task: Implement smart frame sampling (motion/VAD)
+- [~] Task: Implement smart frame sampling (motion/VAD)
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Integrate Amazon Nova 2 Lite for object/text extraction
