@@ -19,7 +19,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Nova Act Grounding & Verification' (Protocol in workflow.md) [06d47d5]
 
 ## Phase 3: Safety-First Conversational Logic
-- [ ] Task: Implement mandatory disclaimer and scope-limiting refusal logic
+- [x] Task: Implement mandatory disclaimer and scope-limiting refusal logic [f7f8a8c]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Integrate grounding results into the conversational response stream
