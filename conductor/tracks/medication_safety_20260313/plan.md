@@ -9,14 +9,14 @@
     - [ ] Implement Feature
 - [x] Task: Conductor - User Manual Verification 'Phase 1: High-Confidence Medication OCR' (Protocol in workflow.md) [bf15217]
 
-## Phase 2: Nova Act Grounding & Verification
+## Phase 2: Nova Act Grounding & Verification [checkpoint: 06d47d5]
 - [x] Task: Setup Nova Act tool call for external medication database search [17f4138]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [x] Task: Implement grounding verification logic and fallback handlers [99e97d8]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Nova Act Grounding & Verification' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Nova Act Grounding & Verification' (Protocol in workflow.md) [06d47d5]
 
 ## Phase 3: Safety-First Conversational Logic
 - [ ] Task: Implement mandatory disclaimer and scope-limiting refusal logic
