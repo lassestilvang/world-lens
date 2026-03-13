@@ -13,7 +13,7 @@
 - [x] Task: Implement document summarization logic using extracted text [0caa380]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Implement entity extraction (dates, amounts, names)
+- [x] Task: Implement entity extraction (dates, amounts, names) [f070191]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Document Summarization & Entity Extraction' (Protocol in workflow.md)
