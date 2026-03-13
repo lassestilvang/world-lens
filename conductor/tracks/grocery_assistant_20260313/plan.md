@@ -28,7 +28,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Persistent Memory' (Protocol in workflow.md) [1a0c874]
 
 ## Phase 4: Conversational Voice Orchestration
-- [ ] Task: Integrate Amazon Nova 2 Sonic for real-time speech
+- [~] Task: Integrate Amazon Nova 2 Sonic for real-time speech
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Implement async tool use for proactive suggestions and memory checks
