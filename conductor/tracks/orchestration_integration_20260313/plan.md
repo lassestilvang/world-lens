@@ -22,7 +22,7 @@
 - [x] Task: Connect capture triggers to `novaVision` and `orchestrator` [f06514a]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Implement proactive feedback trigger (Earcon + Speech + Overlay)
+- [x] Task: Implement proactive feedback trigger (Earcon + Speech + Overlay) [cf7cd65]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Proactive Orchestration Loop' (Protocol in workflow.md)
