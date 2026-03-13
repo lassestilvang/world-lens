@@ -13,7 +13,7 @@
 - [x] Task: Implement 'Memory Optimizer' logic in `memoryContext` (summarize > 20 objects) [ca76967]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Add goal setting state and UI to the main page
+- [x] Task: Add goal setting state and UI to the main page [715fc91]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Memory Optimization & Goal Management' (Protocol in workflow.md)
