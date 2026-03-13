@@ -9,14 +9,14 @@
     - [ ] Implement Feature
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Nova Act Foundation & Search Service' (Protocol in workflow.md) [ba0f49c]
 
-## Phase 2: Orchestration & Tool Calling
+## Phase 2: Orchestration & Tool Calling [checkpoint: acc40a0]
 - [x] Task: Update the central orchestrator to support async tool calling via Nova 2 Sonic [54b32ac]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [x] Task: Implement tool trigger logic for Grocery and Medical scenarios [61fac06]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Orchestration & Tool Calling' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Orchestration & Tool Calling' (Protocol in workflow.md) [acc40a0]
 
 ## Phase 3: Attribution & Fallback Logic
 - [ ] Task: Implement source attribution formatting for conversational responses
