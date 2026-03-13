@@ -28,7 +28,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Attribution & Fallback Logic' (Protocol in workflow.md) [25f5baf]
 
 ## Phase 4: Integration Verification (Multi-Scenario)
-- [ ] Task: Perform end-to-end integration tests for Grocery grounding
+- [x] Task: Perform end-to-end integration tests for Grocery grounding [b20f508]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Perform end-to-end integration tests for Medical grounding
