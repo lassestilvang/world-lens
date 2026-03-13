@@ -9,14 +9,14 @@
     - [ ] Implement Feature
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Project Setup & Next.js Scaffold' (Protocol in workflow.md) [ce45c6d]
 
-## Phase 2: Multimodal Scene Understanding
+## Phase 2: Multimodal Scene Understanding [checkpoint: 8607c83]
 - [x] Task: Implement smart frame sampling (motion/VAD) [c13a179]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [x] Task: Integrate Amazon Nova 2 Lite for object/text extraction [28c6db3]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Multimodal Scene Understanding' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Multimodal Scene Understanding' (Protocol in workflow.md) [8607c83]
 
 ## Phase 3: Persistent Memory
 - [ ] Task: Setup DynamoDB schemas for session memory
