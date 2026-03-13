@@ -1,7 +1,7 @@
 # Implementation Plan: Medication Safety
 
 ## Phase 1: High-Confidence Medication OCR
-- [ ] Task: Implement medication-specific OCR prompt and confidence gating
+- [x] Task: Implement medication-specific OCR prompt and confidence gating [d162bcb]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Integrate Nova 2 Lite for medication label extraction
