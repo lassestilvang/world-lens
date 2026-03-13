@@ -9,10 +9,10 @@ import { formatMedicationResponse } from '../utils/medicationSafety';
  * @param groundedData Data from Nova Act (optional)
  * @returns A safe, conversational response string
  */
-export async function generateGroundedResponse(
+export function generateGroundedResponse(
   ocrInfo: MedicationInfo,
   groundedData?: GroundedMedicationData
-): Promise<string> {
+): string {
   let responseText: string;
 
   if (groundedData) {

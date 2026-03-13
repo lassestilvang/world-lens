@@ -1,4 +1,4 @@
-import { MedicationInfo } from '../services/medicationOCR';
+import { MedicationInfo, MIN_CONFIDENCE_THRESHOLD } from '../services/medicationOCR';
 
 const MANDATORY_DISCLAIMER = 'Please consult your doctor or pharmacist to be sure.';
 const CONFIDENCE_REFUSAL = 'I cannot read the dosage clearly, please do not guess.';
@@ -12,7 +12,7 @@ const ADVICE_REFUSAL = 'I can only provide information explicitly stated on the 
  */
 export function formatMedicationResponse(response: string, ocrInfo: MedicationInfo): string {
   // Rule 1: High Confidence Check
-  if (ocrInfo.confidence < 0.95) {
+  if (ocrInfo.confidence < MIN_CONFIDENCE_THRESHOLD) {
     return CONFIDENCE_REFUSAL;
   }
 

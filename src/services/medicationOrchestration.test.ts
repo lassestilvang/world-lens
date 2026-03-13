@@ -20,16 +20,16 @@ describe('Medication Orchestration - generateGroundedResponse', () => {
     source: 'Grounded via DB'
   };
 
-  it('should generate a response using both OCR and grounded data', async () => {
-    const result = await generateGroundedResponse(ocrData, groundedData);
+  it('should generate a response using both OCR and grounded data', () => {
+    const result = generateGroundedResponse(ocrData, groundedData);
     
     expect(result).toContain('Ibuprofen');
     expect(result).toContain('Adults: 1 tablet every 4 to 6 hours');
     expect(result).toContain('Grounded via DB');
   });
 
-  it('should include a warning if grounded data is missing', async () => {
-    const result = await generateGroundedResponse(ocrData);
+  it('should include a warning if grounded data is missing', () => {
+    const result = generateGroundedResponse(ocrData);
     expect(result).toContain('could not be completed');
   });
 });

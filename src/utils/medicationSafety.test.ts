@@ -1,3 +1,6 @@
+/**
+ * @jest-environment node
+ */
 import { formatMedicationResponse } from './medicationSafety';
 import { MedicationInfo } from './medicationOCR';
 

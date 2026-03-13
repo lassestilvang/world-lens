@@ -26,8 +26,10 @@ CRITICAL RULES:
 `;
 }
 
+export const MIN_CONFIDENCE_THRESHOLD = 0.95;
+
 export function isConfidenceHighEnough(confidence: number): boolean {
-  return confidence >= 0.95;
+  return confidence >= MIN_CONFIDENCE_THRESHOLD;
 }
 
 export async function extractMedicationInfo(base64Image: string): Promise<MedicationInfo> {

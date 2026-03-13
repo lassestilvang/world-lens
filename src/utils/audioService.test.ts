@@ -1,8 +1,8 @@
 import { playMedicationEarcon } from './audioService';
 
 describe('Audio Utilities - playMedicationEarcon', () => {
-  let mockAudioContext: any;
-  let mockOscillator: any;
+  let mockAudioContext: unknown;
+  let mockOscillator: unknown;
 
   beforeEach(() => {
     mockOscillator = {
@@ -23,12 +23,12 @@ describe('Audio Utilities - playMedicationEarcon', () => {
       destination: {}
     };
 
-    (window as any).AudioContext = jest.fn().mockReturnValue(mockAudioContext);
+    (window as unknown as { AudioContext: unknown }).AudioContext = jest.fn().mockReturnValue(mockAudioContext);
   });
 
   it('should attempt to play a sound using the Web Audio API', () => {
     playMedicationEarcon('success');
-    expect(mockAudioContext.createOscillator).toHaveBeenCalled();
-    expect(mockOscillator.start).toHaveBeenCalled();
+    expect((mockAudioContext as { createOscillator: jest.Mock }).createOscillator).toHaveBeenCalled();
+    expect((mockOscillator as { start: jest.Mock }).start).toHaveBeenCalled();
   });
 });
