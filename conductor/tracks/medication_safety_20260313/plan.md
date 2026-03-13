@@ -31,7 +31,7 @@
 - [x] Task: Add medication-specific audio cues (earcons) for successful verification [684b0b5]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Implement visual "Grounded" indicator in the debug panel
+- [x] Task: Implement visual "Grounded" indicator in the debug panel [d6b00c2]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: UI & Accessibility Feedback' (Protocol in workflow.md)
