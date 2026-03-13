@@ -13,8 +13,9 @@ The system combines:
 
 - **live camera input**
 - **real-time speech interaction**
-- **multimodal reasoning**
-- **persistent environmental memory**
+- **multimodal reasoning** (Nova 2 Pro)
+- **persistent environmental memory** (Multi-Agent architecture)
+- **grounded action** (Nova Act integration)
 
 to create an AI that can **interpret environments, documents, objects, and situations**.
 
@@ -246,21 +247,18 @@ AI:
 Mobile Web App
     │
     ▼
-API Gateway
+AWS AppSync / API Gateway
     │
     ▼
-Multimodal Processing Service
+Orchestration Layer (Strands Agents)
     │
-    ├── Smart Frame Sampling
+    ├── Vision Scene Agent (Nova 2 Pro / Lite)
     │
-    ├── Vision Analysis
+    ├── Memory Curator Agent (Nova 2 Lite)
     │
-    ├── Context Builder & Summarizer
+    ├── Grounding Agent (Nova Act)
     │
-    ├── Reasoning Engine
-    │
-    ▼
-Voice Interaction Service
+    └── Conversational Voice Agent (Nova 2 Sonic)
     │
     ▼
 User
@@ -310,28 +308,51 @@ Accessed through Amazon Bedrock.
 
 Primary models:
 
-### Vision & Reasoning
+### Vision & Deep Reasoning
 
-**Amazon Nova Pro**
+**Amazon Nova 2 Pro**
 
 Used for:
 
 * complex scene understanding
-* document interpretation
-* object identification
-* reasoning about environment across time
+* document interpretation and logical extraction
+* high-confidence object identification
 
 ---
 
-### Real-Time Voice & Orchestration
+### Real-Time Interaction & Orchestration
 
-**Amazon Nova Lite** (Text processing) + **Amazon Polly** (TTS)
+**Amazon Nova 2 Sonic**
 
 Used for:
 
-* speech understanding (ASR routing)
-* fast conversational logic
-* spoken responses generation
+* ultra-low latency conversational logic
+* direct speech understanding and generation
+* real-time orchestration of agent state
+
+---
+
+### Efficiency & Summarization
+
+**Amazon Nova 2 Lite**
+
+Used for:
+
+* background memory curation
+* scene summarization
+* context compression
+
+---
+
+### Grounding & Action
+
+**Amazon Nova Act**
+
+Used for:
+
+* real-world grounding (e.g., verifying price data on web)
+* external API interactions
+* performing browser-based workflows for user requests
 
 ---
 
@@ -499,10 +520,10 @@ Instead of blindly sending 1-2 frames per second (which causes lag and high API 
 - **Motion Detection:** Sends a new frame only when the camera stabilizes on a new scene after movement.
 
 **2. Voice Interaction:**
-Real-time streaming via WebSockets.
+Real-time streaming via WebRTC/WebSockets directly to **Nova 2 Sonic**.
 
 **3. Latency Target:**
-1–2 seconds for analysis to spoken response.
+Sub-1.5 seconds for analysis to spoken response, leveraging Nova 2 Sonic's native speed.
 
 ---
 
@@ -544,13 +565,13 @@ AI **proactively** interrupts to say:
 
 ---
 
-### Scene 4
+### Scene 4 (Grounding)
 
 User asks:
 
 > "Is it gluten free?"
 
-AI answers, validating against the visual text on the oatmeal box.
+The **Grounding Agent** uses **Nova Act** to verify the visual data against a real-world product database or the manufacturer's website. AI answers with confidence, validating against the visual text on the oatmeal box and external data.
 
 ---
 
@@ -572,9 +593,11 @@ Backend
 AI
 
 * Amazon Bedrock
-* Amazon Nova Pro (Vision/Reasoning)
-* Amazon Nova Lite (Orchestration/Text)
-* Amazon Polly (Text-to-Speech)
+* Amazon Nova 2 Pro (Vision/Logical Extraction)
+* Amazon Nova 2 Sonic (Voice Interaction/Orchestration)
+* Amazon Nova 2 Lite (Summarization/Curation)
+* Amazon Nova Act (Grounding/External Action)
+* AWS Strands Agents (Multi-agent orchestration)
 
 Storage
 
@@ -594,15 +617,15 @@ WorldLens demonstrates **three frontier AI capabilities simultaneously**:
 
 ### Multimodal perception
 
-AI understands images and text using Amazon Nova Pro.
+AI understands images, text, and speech natively using Amazon Nova 2 models.
 
-### Conversational interaction
+### Agentic Orchestration
 
-Real-time voice dialogue with low latency.
+Powered by **Strands Agents**, the system moves beyond simple pipelines to a multi-agent choreography where specialized agents manage vision, memory, and grounding.
 
 ### Situational intelligence
 
-Persistent world memory and **proactive assistance** (the key differentiator).
+Persistent world memory and **proactive assistance** (the key differentiator), grounded in real-world data via **Nova Act**.
 
 ---
 
