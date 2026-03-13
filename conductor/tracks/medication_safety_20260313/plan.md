@@ -28,7 +28,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Safety-First Conversational Logic' (Protocol in workflow.md) [189f8f1]
 
 ## Phase 4: UI & Accessibility Feedback
-- [ ] Task: Add medication-specific audio cues (earcons) for successful verification
+- [x] Task: Add medication-specific audio cues (earcons) for successful verification [684b0b5]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Implement visual "Grounded" indicator in the debug panel
