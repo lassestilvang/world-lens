@@ -1,7 +1,7 @@
 # Implementation Plan: Nova Act Grounding Agent
 
 ## Phase 1: Nova Act Foundation & Search Service
-- [ ] Task: Scaffold the Nova Act service wrapper for AWS Bedrock
+- [x] Task: Scaffold the Nova Act service wrapper for AWS Bedrock [e8478d0]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Implement basic search tool schema and mock search provider
