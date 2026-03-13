@@ -3,6 +3,17 @@
 
 ## Amazon Nova Hackathon Project
 
+## Submission Strategy (Judge-Optimized)
+
+- **Primary Category:** Voice AI
+- **Secondary Category:** Multimodal Understanding
+
+**Core differentiator to emphasize:** persistent world memory + proactive assistance in a live voice session.
+
+**Hackathon MVP scope lock:** deliver one polished, reliable end-to-end scenario (Grocery Store Assistant) instead of multiple partially complete scenarios.
+
+**Stretch goals (only if stable):** Document Interpreter, Medication Safety flow, and Nova Act-based grounding.
+
 ---
 
 # 1. Overview
@@ -23,6 +34,8 @@ to create an AI that can **interpret environments, documents, objects, and situa
 Instead of a traditional “visual assistant” that simply answers questions about an image, WorldLens **builds an understanding of the user’s surroundings over time** and proactively provides helpful explanations.
 
 The result feels like **an intelligent companion that understands the real world.**
+
+For hackathon judging, the implementation is intentionally scoped to one high-quality live demo path with clear reliability and safety guardrails.
 
 ---
 
@@ -176,6 +189,29 @@ To ensure usability for visually impaired users, the system uses audio cues (ear
 
 # 5. Example Use Cases
 
+## 5.0 Hackathon Scope Lock
+
+**In scope for final demo (must work flawlessly):**
+
+- grocery shelf understanding
+- conversational Q&A in real time via voice
+- persistent world memory across turns
+- proactive suggestion tied to user goal
+
+**Stretch scope (optional):**
+
+- document interpretation
+- medication interpretation with strict refusals
+- Nova Act grounding against external sources
+
+**Out of scope for hackathon MVP:**
+
+- full navigation guidance in dynamic traffic
+- broad medical advice beyond package-label reading
+- fully autonomous multi-step web automation
+
+---
+
 ## Grocery Store Assistant
 
 User points camera at shelf.
@@ -195,6 +231,8 @@ Later:
 > "There is also oatmeal further down the shelf which is healthier."
 
 ---
+
+*The remaining use cases below are roadmap/stretch scenarios and are not required for MVP completeness.*
 
 ## Document Interpreter
 
@@ -271,6 +309,20 @@ the response directly — all within a single bidirectional streaming session.
 
 # 7. AWS Architecture
 
+## 7.0 Hackathon Build Baseline (Concrete)
+
+To reduce execution risk, the implementation baseline is fixed as:
+
+- **Frontend:** Next.js mobile web app
+- **Transport:** bidirectional audio via WebSocket/WebRTC bridge
+- **Backend runtime:** Node.js on AWS Lambda
+- **State store:** DynamoDB
+- **Hosting:** AWS Amplify
+
+Production alternatives (Fargate, additional services) are treated as post-hackathon extensions.
+
+---
+
 ## Frontend
 
 * React / Next.js mobile web app
@@ -280,7 +332,8 @@ the response directly — all within a single bidirectional streaming session.
 
 Hosted on:
 
-AWS Amplify or Amazon S3 + CloudFront
+**Hackathon baseline:** AWS Amplify  
+**Production alternative:** Amazon S3 + CloudFront
 
 ---
 
@@ -294,7 +347,8 @@ Routes requests to backend services via WebSockets for low latency.
 
 ## Backend Compute
 
-AWS Lambda or AWS Fargate
+**Hackathon baseline:** AWS Lambda (Node.js)  
+**Production scale option:** AWS Fargate
 
 Handles:
 
@@ -401,6 +455,9 @@ Image Analysis (Nova 2 Lite via Sonic tool call)
 Scene Summary
       │
       ▼
+Confidence + Safety Gate (uncertainty and refusal policy)
+      │
+      ▼
 Context Builder (Summarizes older objects)
       │
       ▼
@@ -431,6 +488,8 @@ Describe:
 CRITICAL RULES:
 1. If text is blurry or partially obscured, you MUST state "I cannot read this clearly". Do NOT guess or interpolate missing words, especially on medical or legal documents.
 2. Only list objects you are highly confident exist in the frame.
+3. Include confidence for each extracted field and omit low-confidence entities.
+4. If confidence is low for safety-critical content, request a clearer frame instead of answering.
 ```
 
 Example output:
@@ -444,6 +503,22 @@ Objects:
 - Oatmeal
 
 Price labels visible, but text is too blurry to read exact prices.
+```
+
+Structured extraction schema (used internally for safety gating):
+
+```json
+{
+  "environment": "grocery store cereal aisle",
+  "objects": [
+    { "name": "Cheerios", "confidence": 0.93 },
+    { "name": "Frosted Flakes", "confidence": 0.91 }
+  ],
+  "text_spans": [
+    { "text": "GLUTEN FREE", "confidence": 0.89 }
+  ],
+  "uncertain_regions": ["price tags on lower shelf"]
+}
 ```
 
 ---
@@ -478,6 +553,10 @@ Summarized Context: "User is in the cereal aisle. Looked at 20 different cereals
 
 This prevents the LLM prompt from growing infinitely large while maintaining state.
 
+Memory records also store `confidence`, `source_frame_id`, and `timestamp` for traceability.
+
+Short-term memory retention for demo sessions is capped (for example, 24 hours) to avoid indefinite storage of camera-derived context.
+
 ---
 
 # 11. Proactive AI System
@@ -504,6 +583,14 @@ Explain why this may be relevant.
 
 AI generates spoken message.
 
+Proactive guardrails:
+
+- do not interrupt while the user is actively speaking
+- require relevance to an explicit user goal
+- apply cooldown between proactive interventions
+- cap proactive messages per minute to avoid cognitive overload
+- include uncertainty language when confidence is below threshold
+
 ---
 
 # 12. Performance Strategy
@@ -518,6 +605,24 @@ Real-time bidirectional streaming directly to **Nova 2 Sonic**. No separate TTS 
 
 **3. Latency Target:**
 Sub-1.5 seconds for analysis to spoken response, leveraging Nova 2 Sonic's native speed and async tool execution (Sonic can begin speaking while tools finish processing).
+
+## 12.1 Latency Budget (Target p95)
+
+| Stage | Target |
+| --- | --- |
+| Speech start detection + frame capture | 150 ms |
+| Upload + routing | 200 ms |
+| Nova 2 Lite analysis + extraction | 600 ms |
+| Memory update + reasoning | 250 ms |
+| Nova 2 Sonic first spoken token | 300 ms |
+| **Total p95** | **<= 1.5s** |
+
+## 12.2 Cost and Throughput Controls
+
+- send frames only on VAD trigger or stabilized motion
+- deduplicate near-identical frames before model calls
+- summarize memory periodically to bound prompt growth
+- impose per-session token and tool-call budgets
 
 ---
 
@@ -567,6 +672,18 @@ User asks:
 
 The **Grounding Agent** uses **Nova Act** to verify the visual data against a real-world product database or the manufacturer's website. AI answers with confidence, validating against the visual text on the oatmeal box and external data.
 
+If grounding is unavailable (timeout/network/tool failure), the assistant must explicitly state that external verification could not be completed and fall back to visual evidence only.
+
+---
+
+## 3-Minute Submission Video Structure
+
+1. **0:00-0:20** - Problem + one-sentence value proposition.
+2. **0:20-1:40** - Live MVP demo (memory + proactive assist + voice response).
+3. **1:40-2:20** - Debug panel proof (world memory, tool calls, confidence values).
+4. **2:20-2:45** - Reliability/safety fallback clip (blurry text refusal).
+5. **2:45-3:00** - Architecture + explicit Nova integration summary.
+
 ---
 
 # 14. Technical Stack
@@ -580,9 +697,11 @@ Frontend
 
 Backend
 
-* Node.js / Python
+* Node.js (TypeScript) for hackathon runtime
 * AWS Lambda
-* FastAPI or Express
+* Lightweight Express-compatible handlers
+
+Post-hackathon options: Python/FastAPI services for specialized pipelines.
 
 AI
 
@@ -599,7 +718,7 @@ Storage
 
 Hosting
 
-* AWS Amplify
+* AWS Amplify (hackathon baseline)
 * Amazon CloudFront
 
 ---
@@ -645,3 +764,97 @@ WorldLens has potential applications in:
 * everyday decision support
 
 It transforms AI from a passive tool into **a companion that understands the world around you.**
+
+---
+
+# 18. Reliability and Safety Guardrails
+
+## 18.1 Confidence Gating
+
+- do not speak extracted text unless OCR confidence passes threshold
+- do not assert object presence unless detection confidence passes threshold
+- for ambiguous frames, ask for repositioning/closer view instead of guessing
+
+## 18.2 Safety-Critical Policy
+
+- medical/legal/financial content always includes explicit uncertainty handling
+- no dosage inference from incomplete labels
+- no traffic/navigation guarantees in dynamic conditions
+- every grounded factual claim should include a source reference when available
+
+## 18.3 Failure-Mode Response Matrix
+
+| Failure condition | System behavior | User-facing response |
+| --- | --- | --- |
+| Blurry or occluded text | refuse extraction | "I cannot read this clearly. Please move closer or hold steady." |
+| Grounding tool timeout | skip external verification | "I could not verify this online right now. This answer is based only on visible text." |
+| Conflicting evidence | surface uncertainty | "I see conflicting signals. Please show the label again for a safer answer." |
+| Model latency spike | return partial guidance | "I am still analyzing. Here is what I can confirm so far..." |
+| Empty/low-light frame | request recapture | "I cannot see enough detail yet. Please point the camera at the item." |
+
+---
+
+# 19. Privacy and Data Handling
+
+- raw frames are processed transiently and not persisted by default
+- audio is streamed for interaction and not stored unless explicitly enabled for debugging
+- session memory is scoped to the active session with explicit TTL
+- users can clear world memory immediately
+- logs exclude unnecessary PII and store only operational metadata
+- all service communication uses TLS; stored state uses AWS-managed encryption
+
+---
+
+# 20. Evaluation Plan (What We Will Measure)
+
+| Metric | Target |
+| --- | --- |
+| End-to-end voice latency (p95) | <= 1.5s |
+| Scene extraction precision (MVP dataset) | >= 85% |
+| Blurry-text safe refusal rate | >= 95% |
+| Goal-relevance precision for proactive messages | >= 80% |
+| Memory carryover accuracy across 3 turns | >= 90% |
+| Grounded-answer source traceability (when used) | 100% |
+
+Evaluation method:
+
+- build a small labeled benchmark set (for example, 30-50 frames)
+- run scripted conversation tests for memory carryover and proactive relevance
+- capture latency telemetry in logs for p50/p95 reporting
+- include one safety test clip in the final video
+
+---
+
+# 21. Judging Criteria Mapping
+
+| Judging Criterion | How WorldLens demonstrates it |
+| --- | --- |
+| Technical Implementation (60%) | Real-time voice architecture, Nova integration, tool traces, measurable latency/accuracy metrics |
+| Community Impact (20%) | Accessibility-first assistance for real-world decision making |
+| Creativity and Innovation (20%) | Persistent world memory + proactive conversational assistance |
+
+---
+
+# 22. Submission Readiness Checklist
+
+- [ ] 3-minute video includes live working demo and `#AmazonNova`
+- [ ] submission text explicitly states which Nova models/services are used and where
+- [ ] repository link is accessible (or private access shared to required emails)
+- [ ] testing instructions are clear and reproducible for judges
+- [ ] judges can access a working test path free of charge during the judging window
+- [ ] if login is required, credentials are included in the testing instructions
+- [ ] one-click/low-friction demo path is available
+- [ ] fallback behavior is demonstrated (at least one failure-mode clip)
+- [ ] architecture diagram and memory debug panel screenshots are included
+
+---
+
+# 23. Go/No-Go Demo Criteria
+
+WorldLens is demo-ready only if all are true:
+
+1. Grocery MVP runs end-to-end without manual intervention.
+2. Proactive memory moment triggers correctly in live run.
+3. At least one uncertainty refusal case behaves safely.
+4. p95 latency and key metrics are available for reporting.
+5. Judges can reproduce core flow from provided instructions.
