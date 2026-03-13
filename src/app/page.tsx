@@ -1,3 +1,5 @@
+import CameraStream from '../components/CameraStream'
+
 export default function Page() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-zinc-950 text-white">
@@ -11,7 +13,7 @@ export default function Page() {
           className="aspect-[3/4] bg-zinc-900 rounded-2xl border border-zinc-800 flex items-center justify-center relative overflow-hidden"
           data-testid="camera-container"
         >
-          <p className="text-zinc-500">Camera Stream Placeholder</p>
+          <CameraStream />
         </section>
 
         <footer className="flex flex-col items-center gap-2">
