@@ -4,7 +4,9 @@ import { useState, useCallback, useRef } from 'react';
 import CameraStream from '../components/CameraStream';
 import { analyzeFrame } from '../services/novaVision';
 import { evaluateProactiveSuggestion } from '../services/orchestrator';
-import { optimizeMemory, addObservationToMemory } from '../utils/memoryContext';
+import { generateSpeechResponse } from '../services/novaSonic';
+import { optimizeMemory, addObservationToMemory, buildMemoryContext } from '../utils/memoryContext';
+import { playMedicationEarcon } from '../utils/audioService';
 
 export default function Page() {
   const [goal, setGoal] = useState<string>('');
@@ -33,7 +35,6 @@ export default function Page() {
       // 3. Optimize Memory
       const optimization = optimizeMemory(updatedMemory);
       if (optimization.isSummarized) {
-        console.log('Memory summarized:', optimization.summary);
         updatedMemory = optimization.memory;
       }
       setMemory(updatedMemory);
@@ -47,14 +48,22 @@ export default function Page() {
         }, analysis);
 
         if (suggestionResult.shouldSuggest && suggestionResult.suggestionPrompt) {
-          setLastResponse(suggestionResult.suggestionPrompt);
-          // Audio and Voice trigger will be added in the next task
+          if (suggestionResult.suggestionPrompt !== lastSuggestion) {
+            setLastResponse(suggestionResult.suggestionPrompt);
+            
+            // 5. Trigger Feedback
+            playMedicationEarcon('success');
+            await generateSpeechResponse(
+              suggestionResult.suggestionPrompt, 
+              buildMemoryContext(updatedMemory)
+            );
+          }
         }
       }
     } catch (err) {
       console.error('Error in orchestration loop:', err);
     }
-  }, [goal, memory]);
+  }, [goal, memory, lastSuggestion]);
 
   return (
     <main className='flex min-h-screen flex-col items-center justify-center p-4 bg-zinc-950 text-white relative overflow-hidden'>
