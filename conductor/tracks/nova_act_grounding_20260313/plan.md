@@ -1,13 +1,13 @@
 # Implementation Plan: Nova Act Grounding Agent
 
-## Phase 1: Nova Act Foundation & Search Service
+## Phase 1: Nova Act Foundation & Search Service [checkpoint: ba0f49c]
 - [x] Task: Scaffold the Nova Act service wrapper for AWS Bedrock [e8478d0]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [x] Task: Implement basic search tool schema and mock search provider [4f25d85]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Nova Act Foundation & Search Service' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Nova Act Foundation & Search Service' (Protocol in workflow.md) [ba0f49c]
 
 ## Phase 2: Orchestration & Tool Calling
 - [ ] Task: Update the central orchestrator to support async tool calling via Nova 2 Sonic
