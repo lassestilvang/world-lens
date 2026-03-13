@@ -33,3 +33,31 @@ export function buildMemoryContext(memory: string[]): string {
   
   return 'Recent observations:\n' + memory.map(m => `- ${m}`).join('\n');
 }
+
+export interface OptimizationResult {
+  isSummarized: boolean;
+  summary?: string;
+  memory: string[];
+}
+
+/**
+ * Optimizes memory by summarizing if the count exceeds a threshold.
+ * @param memory The current memory array
+ * @returns Optimization result
+ */
+export function optimizeMemory(memory: string[]): OptimizationResult {
+  if (memory.length > 20) {
+    // Simulated summarization logic for MVP demo
+    const summary = `Looked at ${memory.length} different cereals. User goal is partially met but still searching.`;
+    return {
+      isSummarized: true,
+      summary,
+      memory: [] // Reset recent memory after summarization
+    };
+  }
+
+  return {
+    isSummarized: false,
+    memory
+  };
+}
