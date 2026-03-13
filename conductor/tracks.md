@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [~] **Track: Build core grocery store assistant scenario**
+- [x] **Track: Build core grocery store assistant scenario**
   *Link: [./tracks/grocery_assistant_20260313/](./tracks/grocery_assistant_20260313/)*
