@@ -13,7 +13,7 @@
 - [x] Task: Implement smart frame sampling (motion/VAD) [c13a179]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Integrate Amazon Nova 2 Lite for object/text extraction
+- [~] Task: Integrate Amazon Nova 2 Lite for object/text extraction
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Multimodal Scene Understanding' (Protocol in workflow.md)
