@@ -1,13 +1,13 @@
 # Implementation Plan: Medication Safety
 
-## Phase 1: High-Confidence Medication OCR
+## Phase 1: High-Confidence Medication OCR [checkpoint: bf15217]
 - [x] Task: Implement medication-specific OCR prompt and confidence gating [d162bcb]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [x] Task: Integrate Nova 2 Lite for medication label extraction [93246a9]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: High-Confidence Medication OCR' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: High-Confidence Medication OCR' (Protocol in workflow.md) [bf15217]
 
 ## Phase 2: Nova Act Grounding & Verification
 - [ ] Task: Setup Nova Act tool call for external medication database search
