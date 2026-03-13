@@ -27,11 +27,11 @@
     - [ ] Implement Feature
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Attribution & Fallback Logic' (Protocol in workflow.md) [25f5baf]
 
-## Phase 4: Integration Verification (Multi-Scenario)
+## Phase 4: Integration Verification (Multi-Scenario) [checkpoint: e731f3d]
 - [x] Task: Perform end-to-end integration tests for Grocery grounding [b20f508]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [x] Task: Perform end-to-end integration tests for Medical grounding [a937df1]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Integration Verification (Multi-Scenario)' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Integration Verification (Multi-Scenario)' (Protocol in workflow.md) [e731f3d]
