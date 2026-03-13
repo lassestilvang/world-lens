@@ -9,14 +9,14 @@
     - [ ] Implement Feature
 - [x] Task: Conductor - User Manual Verification 'Phase 1: High-Precision OCR & Text Extraction' (Protocol in workflow.md) [a2c9e37]
 
-## Phase 2: Document Summarization & Entity Extraction
+## Phase 2: Document Summarization & Entity Extraction [checkpoint: 6e543ce]
 - [x] Task: Implement document summarization logic using extracted text [0caa380]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [x] Task: Implement entity extraction (dates, amounts, names) [f070191]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Document Summarization & Entity Extraction' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Document Summarization & Entity Extraction' (Protocol in workflow.md) [6e543ce]
 
 ## Phase 3: Conversational Q&A & Safety Guardrails
 - [ ] Task: Implement Q&A engine for document-specific context
