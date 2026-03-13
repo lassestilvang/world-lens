@@ -28,7 +28,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Conversational Q&A & Safety Guardrails' (Protocol in workflow.md) [e229e08]
 
 ## Phase 4: UI Enhancements for Document Mode
-- [ ] Task: Add visual feedback for document capture (e.g., guide overlays)
+- [x] Task: Add visual feedback for document capture (guide overlays) [3218147]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: UI Enhancements for Document Mode' (Protocol in workflow.md)
