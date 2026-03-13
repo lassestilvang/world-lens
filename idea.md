@@ -64,9 +64,9 @@ Users simply:
 
 The system:
 
-1. analyzes camera frames
-2. extracts objects, text, and context
-3. builds a persistent **world model**
+1. smartly samples camera frames based on motion and speech
+2. extracts objects, text, and context using multimodal AI
+3. builds a persistent, optimized **world model**
 4. answers questions conversationally
 5. proactively offers useful observations
 
@@ -135,7 +135,7 @@ Example memory:
   ],
   "user_goal": "find healthy cereal"
 }
-````
+```
 
 This enables reasoning across time.
 
@@ -160,6 +160,15 @@ AI says:
 > "Earlier you asked about gluten-free options. These oats are labeled gluten free."
 
 This makes the AI feel **situationally aware and helpful**.
+
+---
+
+## 4.5 Non-Visual State Feedback (Earcons)
+
+To ensure usability for visually impaired users, the system uses audio cues (earcons) to communicate state without overwhelming the user with spoken text:
+- **Soft Chime:** A proactive observation is ready.
+- **Subtle Click:** A new frame/scene has been successfully processed.
+- **Listening Tone:** The AI has detected speech and is listening.
 
 ---
 
@@ -203,6 +212,8 @@ AI explains next steps.
 
 ## Medication Safety
 
+*Note: This use-case includes strict grounding to prevent hallucinations.*
+
 User points camera at pill bottle.
 
 AI:
@@ -213,7 +224,7 @@ User asks:
 
 > "How many can I take?"
 
-AI explains dosage instructions.
+AI explains dosage instructions, appending a mandatory safety disclaimer: *"Please consult your doctor or pharmacist to be sure."* If the label is blurry, the AI is instructed to strictly state: *"I cannot read the dosage clearly, please do not guess."*
 
 ---
 
@@ -240,9 +251,11 @@ API Gateway
     ▼
 Multimodal Processing Service
     │
+    ├── Smart Frame Sampling
+    │
     ├── Vision Analysis
     │
-    ├── Context Builder
+    ├── Context Builder & Summarizer
     │
     ├── Reasoning Engine
     │
@@ -262,6 +275,7 @@ User
 * React / Next.js mobile web app
 * Camera access via MediaDevices API
 * WebRTC / WebSocket audio streaming
+* Client-side motion detection and Voice Activity Detection (VAD)
 
 Hosted on:
 
@@ -273,7 +287,7 @@ AWS Amplify or Amazon S3 + CloudFront
 
 Amazon API Gateway
 
-Routes requests to backend services.
+Routes requests to backend services via WebSockets for low latency.
 
 ---
 
@@ -283,9 +297,9 @@ AWS Lambda or AWS Fargate
 
 Handles:
 
-* frame processing
+* frame processing routing
 * AI model requests
-* memory updates
+* memory updates and pruning
 * reasoning orchestration
 
 ---
@@ -298,26 +312,26 @@ Primary models:
 
 ### Vision & Reasoning
 
-Amazon Nova 2 Lite
+**Amazon Nova Pro**
 
 Used for:
 
-* scene understanding
+* complex scene understanding
 * document interpretation
 * object identification
-* reasoning about environment
+* reasoning about environment across time
 
 ---
 
-### Real-Time Voice
+### Real-Time Voice & Orchestration
 
-Amazon Nova 2 Sonic
+**Amazon Nova Lite** (Text processing) + **Amazon Polly** (TTS)
 
 Used for:
 
-* speech understanding
-* real-time conversation
-* spoken responses
+* speech understanding (ASR routing)
+* fast conversational logic
+* spoken responses generation
 
 ---
 
@@ -363,13 +377,16 @@ Stores semantic embeddings for:
 Camera Frame
       │
       ▼
-Image Analysis (Nova)
+Client-Side Smart Sampling (Motion/VAD)
+      │
+      ▼
+Image Analysis (Nova Pro)
       │
       ▼
 Scene Summary
       │
       ▼
-Context Builder
+Context Builder (Summarizes older objects)
       │
       ▼
 World Memory Update
@@ -378,14 +395,14 @@ World Memory Update
 Conversation Reasoning
       │
       ▼
-Voice Response
+Voice Response (Amazon Polly)
 ```
 
 ---
 
 # 9. Scene Understanding
 
-Example prompt:
+Example prompt (with strict hallucination mitigation):
 
 ```
 Analyze the image.
@@ -395,6 +412,10 @@ Describe:
 - visible text
 - environment type
 - information useful for a visually impaired user.
+
+CRITICAL RULES:
+1. If text is blurry or partially obscured, you MUST state "I cannot read this clearly". Do NOT guess or interpolate missing words, especially on medical or legal documents.
+2. Only list objects you are highly confident exist in the frame.
 ```
 
 Example output:
@@ -407,7 +428,7 @@ Objects:
 - Frosted Flakes cereal
 - Oatmeal
 
-Price labels visible.
+Price labels visible, but text is too blurry to read exact prices.
 ```
 
 ---
@@ -422,7 +443,7 @@ The memory system tracks:
 * user goals
 * recent observations
 
-Memory evolves over time.
+Memory evolves over time. To **prevent context bloat**, the system employs a summarization and spatial grouping mechanism. 
 
 Example:
 
@@ -434,13 +455,13 @@ Frame 2:
 objects: Cheerios, Frosted Flakes, Oatmeal
 ```
 
-New object detected:
+*Memory Optimizer kicks in after 20 objects:*
 
 ```
-Oatmeal
+Summarized Context: "User is in the cereal aisle. Looked at 20 different cereals including Cheerios, Frosted Flakes, and Oatmeal. None were gluten free."
 ```
 
-This triggers reasoning about relevance.
+This prevents the LLM prompt from growing infinitely large while maintaining state.
 
 ---
 
@@ -472,17 +493,16 @@ AI generates spoken message.
 
 # 12. Performance Strategy
 
-Vision processing:
+**1. Smart Sampling:**
+Instead of blindly sending 1-2 frames per second (which causes lag and high API costs), the client app uses:
+- **Voice Activity Detection (VAD):** Captures and sends a frame the moment the user starts speaking.
+- **Motion Detection:** Sends a new frame only when the camera stabilizes on a new scene after movement.
 
-1–2 frames per second
+**2. Voice Interaction:**
+Real-time streaming via WebSockets.
 
-Voice interaction:
-
-real-time streaming
-
-Latency target:
-
-1–2 seconds for analysis
+**3. Latency Target:**
+1–2 seconds for analysis to spoken response.
 
 ---
 
@@ -490,9 +510,11 @@ Latency target:
 
 ## 60-Second Demo
 
+*Note: The demo UI will feature a debug panel visible on screen showing the real-time JSON "World Memory" updating, proving to judges that the AI is maintaining state.*
+
 ### Scene 1
 
-User scans cereal shelf.
+User scans cereal shelf. *Debug panel shows objects entering memory.*
 
 AI:
 
@@ -506,19 +528,19 @@ User asks:
 
 > "Which one is healthiest?"
 
-AI explains.
+AI explains. *Debug panel logs the User Goal: "Find healthy cereal".*
 
 ---
 
-### Scene 3
+### Scene 3 (The "Aha!" Moment)
 
-Camera moves slightly.
+Camera moves slightly to the bottom shelf.
 
 AI sees oatmeal.
 
-AI proactively says:
+AI **proactively** interrupts to say:
 
-> "There is also oatmeal further down the shelf which is healthier."
+> "Earlier you asked about healthier options. There is oatmeal further down the shelf which fits your goal."
 
 ---
 
@@ -528,7 +550,7 @@ User asks:
 
 > "Is it gluten free?"
 
-AI answers.
+AI answers, validating against the visual text on the oatmeal box.
 
 ---
 
@@ -550,17 +572,19 @@ Backend
 AI
 
 * Amazon Bedrock
-* Nova models
+* Amazon Nova Pro (Vision/Reasoning)
+* Amazon Nova Lite (Orchestration/Text)
+* Amazon Polly (Text-to-Speech)
 
 Storage
 
-* DynamoDB
-* OpenSearch (optional)
+* Amazon DynamoDB
+* Amazon OpenSearch (optional)
 
 Hosting
 
 * AWS Amplify
-* CloudFront
+* Amazon CloudFront
 
 ---
 
@@ -570,15 +594,15 @@ WorldLens demonstrates **three frontier AI capabilities simultaneously**:
 
 ### Multimodal perception
 
-AI understands images and text.
+AI understands images and text using Amazon Nova Pro.
 
 ### Conversational interaction
 
-Real-time voice dialogue.
+Real-time voice dialogue with low latency.
 
 ### Situational intelligence
 
-Persistent world memory and proactive assistance.
+Persistent world memory and **proactive assistance** (the key differentiator).
 
 ---
 
