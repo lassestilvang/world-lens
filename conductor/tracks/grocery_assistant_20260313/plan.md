@@ -19,7 +19,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Multimodal Scene Understanding' (Protocol in workflow.md) [8607c83]
 
 ## Phase 3: Persistent Memory
-- [ ] Task: Setup DynamoDB schemas for session memory
+- [~] Task: Setup DynamoDB schemas for session memory
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Implement memory context builder and summarization logic
