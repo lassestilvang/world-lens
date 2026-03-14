@@ -13,7 +13,7 @@
 - [x] Task: Design and implement the Mode Selector bar in the UI [6139bce]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Update the main page to handle different UI states per mode
+- [x] Task: Update the main page to handle different UI states per mode [90b906a]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Multi-Mode UI Scaffold' (Protocol in workflow.md)
