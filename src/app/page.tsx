@@ -5,6 +5,7 @@ import CameraStream from '../components/CameraStream';
 import { ModeSelector, AssistantMode } from '../components/ModeSelector';
 import DocumentOverlay from '../components/DocumentOverlay';
 import DebugPanel from '../components/DebugPanel';
+import ProactiveAssistOverlay from '../components/ProactiveAssistOverlay';
 import { analyzeFrame, analyzeDocument, analyzeEnvironment, SceneAnalysis, EnvironmentAnalysis } from '../services/novaVision';
 import { evaluateProactiveSuggestion } from '../services/orchestrator';
 import { generateSpeechResponse } from '../services/novaSonic';
@@ -117,14 +118,7 @@ export default function Page() {
           
           <DocumentOverlay active={mode === 'document'} status={isProcessing ? 'capturing' : 'searching'} />
           
-          {lastSuggestion && (
-            <div className={`absolute bottom-4 left-4 right-4 ${lastSuggestion.includes('Hazard') ? 'bg-red-600/95 border-red-400' : 'bg-blue-600/95 border-blue-400'} backdrop-blur p-4 rounded-2xl border shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500`}>
-              <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-70">
-                {lastSuggestion.includes('Hazard') ? 'Safety Alert' : 'AI Insight'}
-              </p>
-              <p className="text-sm leading-snug font-medium">{lastSuggestion}</p>
-            </div>
-          )}
+          <ProactiveAssistOverlay suggestion={lastSuggestion} />
 
           {modeSuggestion && (
             <div className="absolute top-4 left-4 right-4 bg-zinc-900/90 backdrop-blur p-3 rounded-xl border border-zinc-700 flex items-center justify-between animate-in slide-in-from-top-4">
