@@ -27,6 +27,13 @@ describe('Medication Safety Utilities - formatMedicationResponse', () => {
     expect(formatted).toBe('I cannot read the dosage clearly, please do not guess.');
   });
 
+  it('should return a refusal message if OCR text indicates it is blurry or obscured', () => {
+    const blurryInfo = { ...baseInfo, dosage: 'I cannot read this clearly' };
+    const formatted = formatMedicationResponse('Some response', blurryInfo);
+    
+    expect(formatted).toBe('I cannot read the dosage clearly, please do not guess.');
+  });
+
   it('should return a refusal message if the response implies medical advice not on the label', () => {
     // This is a simplified check for the MVP mock
     const adviceResponse = 'You should also take this with a glass of milk for better absorption.';

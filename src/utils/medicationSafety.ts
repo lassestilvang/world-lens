@@ -16,6 +16,14 @@ export function formatMedicationResponse(response: string, ocrInfo: MedicationIn
     return CONFIDENCE_REFUSAL;
   }
 
+  // Rule 1.5: Blurriness text check from OCR
+  const isBlurry = [ocrInfo.name, ocrInfo.strength, ocrInfo.dosage].some(field => 
+    field && field.toLowerCase().includes('cannot read this clearly')
+  );
+  if (isBlurry) {
+    return CONFIDENCE_REFUSAL;
+  }
+
   // Rule 2: Limited Advice Scope Check (Simulated for MVP)
   // In a real system, we'd use a safety agent to verify the response against the label.
   const unauthorizedKeywords = ['milk', 'food', 'interaction', 'better absorption'];
