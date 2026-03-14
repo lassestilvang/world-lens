@@ -10,7 +10,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Environmental Awareness Service' (Protocol in workflow.md) [ef11641]
 
 ## Phase 2: Multi-Mode UI Scaffold
-- [ ] Task: Design and implement the Mode Selector bar in the UI
+- [x] Task: Design and implement the Mode Selector bar in the UI [6139bce]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Update the main page to handle different UI states per mode
