@@ -19,7 +19,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Multi-Mode UI Scaffold' (Protocol in workflow.md) [6b15bd1]
 
 ## Phase 3: Mode Switching & Orchestration Logic
-- [ ] Task: Implement voice-activated mode switching in the orchestrator
+- [x] Task: Implement voice-activated mode switching in the orchestrator [bac7ac4]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Implement 'AI Mode Suggestion' based on visual scene analysis
