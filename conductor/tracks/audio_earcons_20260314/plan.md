@@ -35,7 +35,7 @@
     - [ ] Write failing test for medication OCR blurriness refusal
     - [ ] Implement safety refusal logic in `medicationSafety.ts` and `medicationOCR.ts`
     - [ ] Verify test passes
-- [ ] Task: Document Interpreter Workflow
+- [x] Task: Document Interpreter Workflow [124c290]
     - [ ] Write failing test for document extraction and next-step summarization
     - [ ] Implement logic in `novaVisionDocument.ts`
     - [ ] Verify test passes
