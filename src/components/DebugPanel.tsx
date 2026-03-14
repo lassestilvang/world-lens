@@ -3,14 +3,15 @@
 interface DebugPanelProps {
   visible: boolean;
   grounded?: boolean;
+  memory?: any;
 }
 
-export default function DebugPanel({ visible, grounded = false }: DebugPanelProps) {
+export default function DebugPanel({ visible, grounded = false, memory }: DebugPanelProps) {
   if (!visible) return null;
 
   return (
     <div 
-      className="absolute bottom-4 right-4 z-50 bg-black/80 border border-zinc-800 rounded-lg p-4 w-64 backdrop-blur-sm shadow-2xl"
+      className="absolute bottom-4 right-4 z-50 bg-black/80 border border-zinc-800 rounded-lg p-4 w-72 backdrop-blur-sm shadow-2xl max-h-[80vh] overflow-y-auto"
       data-testid="debug-panel"
     >
       <div className="flex items-center justify-between mb-2">
@@ -25,7 +26,7 @@ export default function DebugPanel({ visible, grounded = false }: DebugPanelProp
           </span>
         )}
       </div>
-      <div className="space-y-1">
+      <div className="space-y-1 mb-4">
         <div className="flex justify-between">
           <span className="text-[10px] text-zinc-500">OCR Confidence:</span>
           <span className="text-[10px] font-mono text-zinc-300">98%</span>
@@ -35,6 +36,15 @@ export default function DebugPanel({ visible, grounded = false }: DebugPanelProp
           <span className="text-[10px] font-mono text-zinc-300">1.2s</span>
         </div>
       </div>
+
+      {memory && (
+        <div className="mt-4 border-t border-zinc-800 pt-3">
+          <h4 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2">World Memory</h4>
+          <pre className="text-[10px] text-zinc-300 font-mono whitespace-pre-wrap break-all bg-zinc-900/50 p-2 rounded">
+            {JSON.stringify(memory, null, 2)}
+          </pre>
+        </div>
+      )}
     </div>
   );
 }

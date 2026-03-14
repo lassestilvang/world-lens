@@ -167,7 +167,15 @@ export default function Page() {
           </div>
         )}
 
-        <DebugPanel visible={mode === 'environment'} grounded={true} />
+        <DebugPanel 
+          visible={true} 
+          grounded={true} 
+          memory={{
+            mode,
+            objects_seen: memory,
+            user_goal: goal || 'None'
+          }} 
+        />
 
         <footer className="flex flex-col items-center gap-2">
           <div 
