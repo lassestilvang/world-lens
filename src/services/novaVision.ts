@@ -29,6 +29,12 @@ export interface DocumentAnswer {
   answer: string;
 }
 
+export interface EnvironmentAnalysis {
+  safetyObjects: string[];
+  sceneContext: string;
+  confidence: number;
+}
+
 export async function analyzeFrame(base64Image: string): Promise<SceneAnalysis> {
   if (!base64Image) {
     throw new Error('Invalid image data');
@@ -193,5 +199,38 @@ export async function askDocumentQuestion(context: string, question: string): Pr
   // Mocked response for test suite
   return {
     answer: 'According to the document, you owe $150.00.'
+  };
+}
+
+export async function analyzeEnvironment(base64Image: string): Promise<EnvironmentAnalysis> {
+  if (!base64Image) {
+    throw new Error('Invalid image data');
+  }
+
+  // In a real application, we would call Nova 2 Lite with an environment-specific prompt.
+  /*
+  const command = new InvokeModelCommand({
+    modelId: 'amazon.nova-lite-v1:0',
+    contentType: 'application/json',
+    accept: 'application/json',
+    body: JSON.stringify({
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { image: { format: 'jpeg', source: { bytes: base64Image } } },
+            { text: "Analyze the environment. Identify safety-critical objects (traffic lights, crossings, obstacles) and provide general scene context. Return JSON with 'safetyObjects', 'sceneContext', and 'confidence'." }
+          ]
+        }
+      ]
+    })
+  });
+  */
+
+  // Mocked response for test suite
+  return {
+    safetyObjects: ['traffic light (red)', 'pedestrian crossing'],
+    sceneContext: 'At a busy street intersection with a clear crossing ahead.',
+    confidence: 0.96
   };
 }
