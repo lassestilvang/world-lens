@@ -14,7 +14,7 @@ const MODES: { id: AssistantMode; label: string; icon: string }[] = [
   { id: 'environment', label: 'Environment', icon: '🌍' },
 ];
 
-export default function ModeSelector({ currentMode, onModeChange }: ModeSelectorProps) {
+export function ModeSelector({ currentMode, onModeChange }: ModeSelectorProps) {
   return (
     <div className="flex bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-2xl p-1 gap-1 shadow-lg">
       {MODES.map((mode) => (

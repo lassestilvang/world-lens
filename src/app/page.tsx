@@ -2,10 +2,10 @@
 
 import { useState, useCallback, useRef } from 'react';
 import CameraStream from '../components/CameraStream';
-import ModeSelector, { AssistantMode } from '../components/ModeSelector';
+import { ModeSelector, AssistantMode } from '../components/ModeSelector';
 import DocumentOverlay from '../components/DocumentOverlay';
 import DebugPanel from '../components/DebugPanel';
-import { analyzeFrame, analyzeDocument, analyzeEnvironment } from '../services/novaVision';
+import { analyzeFrame, analyzeDocument, analyzeEnvironment, SceneAnalysis, EnvironmentAnalysis } from '../services/novaVision';
 import { evaluateProactiveSuggestion } from '../services/orchestrator';
 import { generateSpeechResponse } from '../services/novaSonic';
 import { optimizeMemory, addObservationToMemory, buildMemoryContext } from '../utils/memoryContext';
@@ -28,15 +28,6 @@ export default function Page() {
     setInputValue('');
   };
 
-  const processUserCommand = async (command: string) => {
-    const targetMode = detectModeSwitch(command);
-    if (targetMode && targetMode !== mode) {
-      setMode(targetMode);
-      setLastResponse(`Switching to ${targetMode} mode.`);
-      playMedicationEarcon('success');
-    }
-  };
-
   const onFrameCapture = useCallback(async (frameData: string) => {
     try {
       setIsProcessing(true);
@@ -50,10 +41,13 @@ export default function Page() {
         analysis = await analyzeFrame(frameData);
       }
       
+      const objects = 'safetyObjects' in analysis ? analysis.safetyObjects : analysis.objects;
+      const context = 'sceneContext' in analysis ? analysis.sceneContext : analysis.environment;
+
       // 1. Check for Immediate Hazards (Safety First)
-      const objects = (analysis as any).objects || (analysis as any).safetyObjects || [];
       if (isImmediateHazard(objects)) {
-        setLastResponse(`Hazard Detected: ${objects.find((o: string) => o.includes('red') || o.includes('obstacle'))}`);
+        const hazard = objects.find((o: string) => o.includes('red') || o.includes('obstacle'));
+        setLastResponse(`Hazard Detected: ${hazard}`);
         playMedicationEarcon('warning');
         // Interrupt flow logic would trigger speech here
       }
@@ -61,7 +55,7 @@ export default function Page() {
       // 2. Suggest Mode Improvements
       const suggested = suggestModeFromScene({
         objects,
-        environment: (analysis as any).environment || (analysis as any).sceneContext || ''
+        environment: context || ''
       }, mode);
       setModeSuggestion(suggested);
 
@@ -82,10 +76,10 @@ export default function Page() {
       // 4. Proactive Advice
       if (goal || mode === 'environment') {
         const suggestionResult = await evaluateProactiveSuggestion({
-          environment: (analysis as any).environment || (analysis as any).sceneContext || 'unknown',
+          environment: context || 'unknown',
           objects_seen: updatedMemory,
           user_goal: goal || 'stay safe'
-        }, analysis as any);
+        }, analysis as SceneAnalysis);
 
         if (suggestionResult.shouldSuggest && suggestionResult.suggestionPrompt) {
           if (suggestionResult.suggestionPrompt !== lastSuggestion) {

@@ -202,6 +202,11 @@ export async function askDocumentQuestion(context: string, question: string): Pr
   };
 }
 
+/**
+ * Analyzes the visual environment for safety-critical objects and general context.
+ * @param base64Image The base64-encoded image frame.
+ * @returns A promise resolving to an EnvironmentAnalysis object.
+ */
 export async function analyzeEnvironment(base64Image: string): Promise<EnvironmentAnalysis> {
   if (!base64Image) {
     throw new Error('Invalid image data');
