@@ -5,7 +5,7 @@
     - [ ] Write failing test for `EarconService` sound loading and playback
     - [ ] Implement `EarconService` (soft chime, click, listening tone)
     - [ ] Verify test passes and coverage is >80%
-- [ ] Task: Integrate Earcons into Orchestration
+- [x] Task: Integrate Earcons into Orchestration [a8926ff]
     - [ ] Write failing tests for triggering earcons during state changes (proactive observation, frame processed, listening)
     - [ ] Update `orchestrator.ts` and `modeSwitching.ts` to trigger earcons
     - [ ] Verify tests pass
