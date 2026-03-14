@@ -16,7 +16,7 @@
     - [ ] Write failing test for `DebugPanel` receiving and rendering 'World Memory' JSON
     - [ ] Implement UI updates in `DebugPanel.tsx` and bind to `memoryContext`
     - [ ] Verify test passes
-- [ ] Task: Proactive Assist UX
+- [x] Task: Proactive Assist UX [3355834]
     - [ ] Write failing test for handling AI interruptions gracefully in the UI
     - [ ] Implement visual indicator for proactive suggestions in `DocumentOverlay.tsx` or similar component
     - [ ] Verify test passes
