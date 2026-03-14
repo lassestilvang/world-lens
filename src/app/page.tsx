@@ -10,6 +10,9 @@ import { evaluateProactiveSuggestion } from '../services/orchestrator';
 import { generateSpeechResponse } from '../services/novaSonic';
 import { optimizeMemory, addObservationToMemory, buildMemoryContext } from '../utils/memoryContext';
 import { playMedicationEarcon } from '../utils/audioService';
+import { detectModeSwitch } from '../utils/modeSwitching';
+import { suggestModeFromScene } from '../utils/modeDetection';
+import { isImmediateHazard } from '../utils/safetyInterrupt';
 
 export default function Page() {
   const [mode, setMode] = useState<AssistantMode>('grocery');
@@ -18,10 +21,20 @@ export default function Page() {
   const [memory, setMemory] = useState<string[]>([]);
   const [lastSuggestion, setLastResponse] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [modeSuggestion, setModeSuggestion] = useState<AssistantMode | null>(null);
   
   const handleSetGoal = () => {
     setGoal(inputValue);
     setInputValue('');
+  };
+
+  const processUserCommand = async (command: string) => {
+    const targetMode = detectModeSwitch(command);
+    if (targetMode && targetMode !== mode) {
+      setMode(targetMode);
+      setLastResponse(`Switching to ${targetMode} mode.`);
+      playMedicationEarcon('success');
+    }
   };
 
   const onFrameCapture = useCallback(async (frameData: string) => {
@@ -37,10 +50,23 @@ export default function Page() {
         analysis = await analyzeFrame(frameData);
       }
       
-      // Update Memory (Scenario dependent for MVP)
-      let updatedMemory = [...memory];
+      // 1. Check for Immediate Hazards (Safety First)
       const objects = (analysis as any).objects || (analysis as any).safetyObjects || [];
-      
+      if (isImmediateHazard(objects)) {
+        setLastResponse(`Hazard Detected: ${objects.find((o: string) => o.includes('red') || o.includes('obstacle'))}`);
+        playMedicationEarcon('warning');
+        // Interrupt flow logic would trigger speech here
+      }
+
+      // 2. Suggest Mode Improvements
+      const suggested = suggestModeFromScene({
+        objects,
+        environment: (analysis as any).environment || (analysis as any).sceneContext || ''
+      }, mode);
+      setModeSuggestion(suggested);
+
+      // 3. Update Memory
+      let updatedMemory = [...memory];
       objects.forEach((obj: string) => {
         if (!updatedMemory.includes(obj)) {
           updatedMemory = addObservationToMemory(updatedMemory, obj, 100);
@@ -53,6 +79,7 @@ export default function Page() {
       }
       setMemory(updatedMemory);
 
+      // 4. Proactive Advice
       if (goal || mode === 'environment') {
         const suggestionResult = await evaluateProactiveSuggestion({
           environment: (analysis as any).environment || (analysis as any).sceneContext || 'unknown',
@@ -97,9 +124,23 @@ export default function Page() {
           <DocumentOverlay active={mode === 'document'} status={isProcessing ? 'capturing' : 'searching'} />
           
           {lastSuggestion && (
-            <div className="absolute bottom-4 left-4 right-4 bg-blue-600/95 backdrop-blur p-4 rounded-2xl border border-blue-400 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-70">AI Insight</p>
+            <div className={`absolute bottom-4 left-4 right-4 ${lastSuggestion.includes('Hazard') ? 'bg-red-600/95 border-red-400' : 'bg-blue-600/95 border-blue-400'} backdrop-blur p-4 rounded-2xl border shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500`}>
+              <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-70">
+                {lastSuggestion.includes('Hazard') ? 'Safety Alert' : 'AI Insight'}
+              </p>
               <p className="text-sm leading-snug font-medium">{lastSuggestion}</p>
+            </div>
+          )}
+
+          {modeSuggestion && (
+            <div className="absolute top-4 left-4 right-4 bg-zinc-900/90 backdrop-blur p-3 rounded-xl border border-zinc-700 flex items-center justify-between animate-in slide-in-from-top-4">
+              <p className="text-xs text-zinc-300">Suggest switching to <b>{modeSuggestion}</b>?</p>
+              <button 
+                onClick={() => { setMode(modeSuggestion); setModeSuggestion(null); }}
+                className="text-[10px] bg-white text-black px-2 py-1 rounded font-bold uppercase"
+              >
+                Switch
+              </button>
             </div>
           )}
         </section>

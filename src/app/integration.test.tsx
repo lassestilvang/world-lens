@@ -42,7 +42,7 @@ describe('Aha! Moment End-to-End Integration', () => {
 
     // 1. Set User Goal
     const input = screen.getByPlaceholderText(/e.g., find healthy cereal/i);
-    const button = screen.getByRole('button', { name: /Set Goal/i });
+    const button = screen.getByRole('button', { name: /^Set$/i });
     fireEvent.change(input, { target: { value: 'find healthy cereal' } });
     fireEvent.click(button);
 

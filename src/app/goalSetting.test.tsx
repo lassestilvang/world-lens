@@ -19,7 +19,7 @@ describe('Goal Setting UI', () => {
   it('should allow user to set a goal', () => {
     render(<Page />);
     const input = screen.getByPlaceholderText(/e.g., find healthy cereal/i);
-    const button = screen.getByRole('button', { name: /Set Goal/i });
+    const button = screen.getByRole('button', { name: /^Set$/i });
 
     fireEvent.change(input, { target: { value: 'find gluten free options' } });
     fireEvent.click(button);

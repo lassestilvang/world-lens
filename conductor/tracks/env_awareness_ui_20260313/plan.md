@@ -31,7 +31,7 @@
 - [x] Task: Implement the "Safety Interrupt" mechanism for environmental alerts [ec1c545]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Final polish of audio cues and visual overlays for all modes
+- [~] Task: Final polish of audio cues and visual overlays for all modes
     - [ ] Write Tests
     - [ ] Implement Feature
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: Safety Interrupt & Polish' (Protocol in workflow.md)
