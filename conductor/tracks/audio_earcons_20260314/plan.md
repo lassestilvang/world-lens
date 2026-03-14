@@ -11,7 +11,7 @@
     - [ ] Verify tests pass
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Audio Earcons Implementation' (Protocol in workflow.md) [66ae36f]
 
-## Phase 2: Demo Flow UI Polish
+## Phase 2: Demo Flow UI Polish [checkpoint: d0e271e]
 - [x] Task: Debug Panel Real-time Updates [efffca5]
     - [ ] Write failing test for `DebugPanel` receiving and rendering 'World Memory' JSON
     - [ ] Implement UI updates in `DebugPanel.tsx` and bind to `memoryContext`
@@ -24,7 +24,7 @@
     - [ ] Write failing test for rendering "I cannot read this clearly" refusal state
     - [ ] Implement fallback UI components in `CameraStream` and main layout
     - [ ] Verify test passes
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Demo Flow UI Polish' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Demo Flow UI Polish' (Protocol in workflow.md) [d0e271e]
 
 ## Phase 3: Stretch Scenario Integration
 - [ ] Task: Nova Act Grounding for Grocery
