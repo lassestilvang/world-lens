@@ -1,7 +1,13 @@
 import { invokeNovaAct } from './novaAct';
 import { searchGroceryPrice } from './searchTools';
 
-export async function verifyGroceryWithNovaAct(query: string) {
+export interface GroceryVerificationResult {
+  item: string;
+  price: string;
+  source: string;
+}
+
+export async function verifyGroceryWithNovaAct(query: string): Promise<GroceryVerificationResult | null> {
   const tools = [
     {
       name: 'search_grocery_price',
@@ -10,9 +16,9 @@ export async function verifyGroceryWithNovaAct(query: string) {
     }
   ];
 
-  const response: any = await invokeNovaAct([
+  const response = await invokeNovaAct([
     { role: 'user', content: query }
-  ], tools);
+  ], tools) as { tool_use?: { name: string; input: { item: string } } };
 
   if (response.tool_use && response.tool_use.name === 'search_grocery_price') {
     const item = response.tool_use.input.item;

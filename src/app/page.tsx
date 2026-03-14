@@ -94,10 +94,11 @@ export default function Page() {
           }
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error in orchestration loop:', err);
       // For MVP, if error has a refusal message, set it as fallback
-      if (err?.message?.includes('read this clearly')) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (errorMessage.includes('read this clearly')) {
         setFallbackMessage('I cannot read this clearly. Please move closer or hold steady.');
       }
     } finally {

@@ -3,7 +3,7 @@
 interface DebugPanelProps {
   visible: boolean;
   grounded?: boolean;
-  memory?: any;
+  memory?: unknown;
 }
 
 export default function DebugPanel({ visible, grounded = false, memory }: DebugPanelProps) {

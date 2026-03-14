@@ -1,4 +1,4 @@
-import { playEarcon } from './earconService';
+import { playEarcon, resetSharedContext } from './earconService';
 
 describe('EarconService', () => {
   let mockAudioContext: any;
@@ -6,6 +6,7 @@ describe('EarconService', () => {
   let mockGain: any;
 
   beforeEach(() => {
+    resetSharedContext();
     mockOscillator = {
       connect: jest.fn(),
       frequency: { setValueAtTime: jest.fn() },
