@@ -66,7 +66,7 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
           const mockMotion = 0; 
 
           if (samplerRef.current.shouldCapture(mockIsSpeaking, mockMotion)) {
-            const frame = (ref as any).current?.captureFrame();
+            const frame = (ref as React.RefObject<CameraStreamHandle>).current?.captureFrame();
             if (frame) onFrameCapture(frame);
           }
         }, 500);
