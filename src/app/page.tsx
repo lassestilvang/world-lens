@@ -23,6 +23,7 @@ export default function Page() {
   const [lastSuggestion, setLastResponse] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [modeSuggestion, setModeSuggestion] = useState<AssistantMode | null>(null);
+  const [fallbackMessage, setFallbackMessage] = useState<string | undefined>(undefined);
   
   const handleSetGoal = () => {
     setGoal(inputValue);
@@ -93,8 +94,12 @@ export default function Page() {
           }
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error in orchestration loop:', err);
+      // For MVP, if error has a refusal message, set it as fallback
+      if (err?.message?.includes('read this clearly')) {
+        setFallbackMessage('I cannot read this clearly. Please move closer or hold steady.');
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -114,7 +119,7 @@ export default function Page() {
           className="aspect-[3/4] bg-zinc-900 rounded-3xl border border-zinc-800 flex items-center justify-center relative overflow-hidden shadow-2xl shadow-black/50"
           data-testid="camera-container"
         >
-          <CameraStream onFrameCapture={onFrameCapture} />
+          <CameraStream onFrameCapture={onFrameCapture} fallbackMessage={fallbackMessage} />
           
           <DocumentOverlay active={mode === 'document'} status={isProcessing ? 'capturing' : 'searching'} />
           

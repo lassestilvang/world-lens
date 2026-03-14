@@ -9,9 +9,10 @@ export interface CameraStreamHandle {
 
 interface CameraStreamProps {
   onFrameCapture?: (frameData: string) => void;
+  fallbackMessage?: string;
 }
 
-const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFrameCapture }, ref) => {
+const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFrameCapture, fallbackMessage }, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
   const samplerRef = useRef<FrameSampler | null>(null);
@@ -90,18 +91,33 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
   }, [onFrameCapture, ref]);
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full bg-black">
       {error ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-red-950/20 text-red-500 p-4 text-center">
+        <div className="absolute inset-0 flex items-center justify-center bg-red-950/20 text-red-500 p-4 text-center z-10">
           {error}
         </div>
       ) : null}
+      
+      {fallbackMessage && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-md z-20">
+          <div className="text-center p-6 border border-zinc-700 bg-zinc-900/90 rounded-2xl max-w-sm">
+            <div className="w-12 h-12 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center mx-auto mb-4 border border-amber-500/30">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2">Analysis Paused</h3>
+            <p className="text-sm text-zinc-300">{fallbackMessage}</p>
+          </div>
+        </div>
+      )}
+
       <video
         ref={videoRef}
         autoPlay
         playsInline
         muted
-        className="w-full h-full object-cover"
+        className={`w-full h-full object-cover ${fallbackMessage ? 'opacity-30 blur-md grayscale' : ''}`}
         data-testid="video-stream"
       />
     </div>

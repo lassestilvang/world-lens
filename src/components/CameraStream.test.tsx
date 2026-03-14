@@ -40,4 +40,9 @@ describe('CameraStream', () => {
     expect(videoElement).toBeInTheDocument()
     expect(videoElement.tagName).toBe('VIDEO')
   })
+
+  it('renders a fallback message overlay when provided', () => {
+    render(<CameraStream fallbackMessage="I cannot read this clearly" />)
+    expect(screen.getByText(/I cannot read this clearly/i)).toBeInTheDocument()
+  })
 })
