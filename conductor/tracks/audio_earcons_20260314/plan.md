@@ -31,7 +31,7 @@
     - [ ] Write failing test for `groundingOrchestrator` calling external product API mock
     - [ ] Implement Nova Act integration in `groceryIntegration.ts`
     - [ ] Verify test passes
-- [ ] Task: Medication Safety Guardrails
+- [x] Task: Medication Safety Guardrails [bcef889]
     - [ ] Write failing test for medication OCR blurriness refusal
     - [ ] Implement safety refusal logic in `medicationSafety.ts` and `medicationOCR.ts`
     - [ ] Verify test passes
