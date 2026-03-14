@@ -1,4 +1,5 @@
 import { GROCERY_TOOL_SCHEMA, MEDICAL_TOOL_SCHEMA, searchGroceryPrice, searchMedicalDatabase } from './searchTools';
+import { verifyGroceryWithNovaAct } from './groceryIntegration';
 
 export interface OrchestrationContext {
   scenario: string;
@@ -41,15 +42,19 @@ export async function orchestrateToolCall(context: OrchestrationContext): Promis
  * @returns A grounded result
  */
 export async function triggerGroundingTool(context: OrchestrationContext): Promise<GroundedResult> {
+  if (context.scenario === 'grocery') {
+    const result = await verifyGroceryWithNovaAct(context.query);
+    if (result) {
+      return {
+        verified_fact: `Verified: The price of ${result.item} is ${result.price} (via ${result.source}).`
+      };
+    }
+    throw new Error('Grocery verification failed');
+  }
+
   const orchestrated = await orchestrateToolCall(context);
 
-  if (orchestrated.tool === GROCERY_TOOL_SCHEMA.name) {
-    const args = orchestrated.args as { item: string };
-    const rawResult = await searchGroceryPrice(args.item) as { item: string; price: string; source: string };
-    return {
-      verified_fact: `Verified: The price of ${rawResult.item} is ${rawResult.price} (via ${rawResult.source}).`
-    };
-  } else if (orchestrated.tool === MEDICAL_TOOL_SCHEMA.name) {
+  if (orchestrated.tool === MEDICAL_TOOL_SCHEMA.name) {
     const args = orchestrated.args as { drug: string };
     const rawResult = await searchMedicalDatabase(args.drug) as { drug: string; indications: string; warnings: string; source: string };
     return {
