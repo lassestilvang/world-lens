@@ -18,14 +18,14 @@
     - [ ] Implement Feature
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Multi-Mode UI Scaffold' (Protocol in workflow.md) [6b15bd1]
 
-## Phase 3: Mode Switching & Orchestration Logic
+## Phase 3: Mode Switching & Orchestration Logic [checkpoint: faeba99]
 - [x] Task: Implement voice-activated mode switching in the orchestrator [bac7ac4]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [x] Task: Implement 'AI Mode Suggestion' based on visual scene analysis [e2004cf]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Mode Switching & Orchestration Logic' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Mode Switching & Orchestration Logic' (Protocol in workflow.md) [faeba99]
 
 ## Phase 4: Safety Interrupt & Polish
 - [ ] Task: Implement the "Safety Interrupt" mechanism for environmental alerts
