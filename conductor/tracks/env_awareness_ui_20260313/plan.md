@@ -9,14 +9,14 @@
     - [ ] Implement Feature
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Environmental Awareness Service' (Protocol in workflow.md) [ef11641]
 
-## Phase 2: Multi-Mode UI Scaffold
+## Phase 2: Multi-Mode UI Scaffold [checkpoint: 6b15bd1]
 - [x] Task: Design and implement the Mode Selector bar in the UI [6139bce]
     - [ ] Write Tests
     - [ ] Implement Feature
 - [x] Task: Update the main page to handle different UI states per mode [90b906a]
     - [ ] Write Tests
     - [ ] Implement Feature
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Multi-Mode UI Scaffold' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Multi-Mode UI Scaffold' (Protocol in workflow.md) [6b15bd1]
 
 ## Phase 3: Mode Switching & Orchestration Logic
 - [ ] Task: Implement voice-activated mode switching in the orchestrator
