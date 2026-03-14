@@ -1,7 +1,7 @@
 # Implementation Plan: Audio Earcons, Demo UI Polish, and Scenario Integration
 
 ## Phase 1: Audio Earcons Implementation
-- [ ] Task: Implement Earcons service
+- [x] Task: Implement Earcons service [db4aed4]
     - [ ] Write failing test for `EarconService` sound loading and playback
     - [ ] Implement `EarconService` (soft chime, click, listening tone)
     - [ ] Verify test passes and coverage is >80%
