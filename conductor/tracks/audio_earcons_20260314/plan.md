@@ -26,7 +26,7 @@
     - [ ] Verify test passes
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Demo Flow UI Polish' (Protocol in workflow.md) [d0e271e]
 
-## Phase 3: Stretch Scenario Integration
+## Phase 3: Stretch Scenario Integration [checkpoint: 45960b5]
 - [x] Task: Nova Act Grounding for Grocery [90b5dc7]
     - [ ] Write failing test for `groundingOrchestrator` calling external product API mock
     - [ ] Implement Nova Act integration in `groceryIntegration.ts`
@@ -39,4 +39,4 @@
     - [ ] Write failing test for document extraction and next-step summarization
     - [ ] Implement logic in `novaVisionDocument.ts`
     - [ ] Verify test passes
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Stretch Scenario Integration' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Stretch Scenario Integration' (Protocol in workflow.md) [45960b5]
