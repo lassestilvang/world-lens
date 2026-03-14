@@ -20,7 +20,7 @@
     - [ ] Write failing test for handling AI interruptions gracefully in the UI
     - [ ] Implement visual indicator for proactive suggestions in `DocumentOverlay.tsx` or similar component
     - [ ] Verify test passes
-- [ ] Task: Error States & Fallbacks UI
+- [x] Task: Error States & Fallbacks UI [a4b89ef]
     - [ ] Write failing test for rendering "I cannot read this clearly" refusal state
     - [ ] Implement fallback UI components in `CameraStream` and main layout
     - [ ] Verify test passes
