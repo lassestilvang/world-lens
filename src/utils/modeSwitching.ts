@@ -1,4 +1,5 @@
 import { AssistantMode } from '../components/ModeSelector';
+import { playEarcon } from '../services/earconService';
 
 /**
  * Detects if a user command intends to switch the assistant mode.
@@ -18,4 +19,11 @@ export function detectModeSwitch(command: string): AssistantMode | null {
   if (normalized.includes('grocery')) return 'grocery';
 
   return null;
+}
+
+/**
+ * Triggers the listening earcon to provide non-visual feedback that the AI is listening.
+ */
+export function notifyListening(): void {
+  playEarcon('listen');
 }

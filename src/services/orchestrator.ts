@@ -1,4 +1,5 @@
 import { SceneAnalysis } from './novaVision';
+import { playEarcon } from './earconService';
 
 interface SessionMemory {
   environment: string;
@@ -15,6 +16,9 @@ export async function evaluateProactiveSuggestion(
   memory: SessionMemory,
   currentAnalysis: SceneAnalysis
 ): Promise<SuggestionResult> {
+  // Play subtle click when a new frame is successfully processed
+  playEarcon('click');
+
   // Simple heuristic for hackathon MVP:
   // If the user's goal contains keywords that match new objects, trigger a suggestion.
   
@@ -30,6 +34,8 @@ export async function evaluateProactiveSuggestion(
     
     // For test purposes, let's hardcode the relation or use a basic check.
     if (userGoalTokens.includes('cereal') && objectLower.includes('oatmeal')) {
+        // Play soft chime when a proactive observation is ready
+        playEarcon('chime');
         return {
           shouldSuggest: true,
           suggestionPrompt: `The user previously asked about ${memory.user_goal}. Explain why the newly spotted ${object} might be relevant.`
