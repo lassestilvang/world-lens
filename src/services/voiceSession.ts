@@ -303,6 +303,31 @@ export class VoiceSession {
       credentials: credentialsProvider,
     });
 
+    if (process.env.NODE_ENV !== 'production') {
+      this.client.middlewareStack.add(
+        (next) => async (args) => {
+          const request = args.request as {
+            hostname?: string;
+            protocol?: string;
+            path?: string;
+            query?: Record<string, string>;
+          };
+          if (request?.hostname && request?.query) {
+            console.info('[VoiceSession] Bedrock request', {
+              host: request.hostname,
+              protocol: request.protocol,
+              path: request.path,
+              hasSecurityToken: Boolean(request.query['X-Amz-Security-Token']),
+              hasSignature: Boolean(request.query['X-Amz-Signature']),
+              amzDate: request.query['X-Amz-Date'],
+            });
+          }
+          return next(args);
+        },
+        { step: 'finalizeRequest', name: 'logBedrockRequest' }
+      );
+    }
+
     this.isActive = true;
     this.emit({ type: 'connected' });
 
