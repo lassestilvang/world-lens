@@ -235,7 +235,7 @@ export class WorldLensStack extends cdk.Stack {
     // Automated Zero-Touch configuration for local development
     
     const devUser = new iam.User(this, 'LocalDevUser', {
-      userName: 'worldlens-dev-user',
+      userName: `worldlens-dev-user-${this.region}`,
     });
 
     devUser.addToPrincipalPolicy(bedrockPolicy);

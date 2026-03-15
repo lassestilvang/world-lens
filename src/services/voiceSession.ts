@@ -381,9 +381,9 @@ export class VoiceSession {
       }
     } catch (error) {
       console.error('[VoiceSession] Stream error:', error);
-      if (error && typeof error === 'object' && '$response' in error) {
-        // @ts-expect-error debug logging
-        console.error('[VoiceSession] Response', error.$response);
+      const response = (error as { $response?: unknown })?.$response;
+      if (response) {
+        console.error('[VoiceSession] Response', response);
       }
       this.emit({
         type: 'error',
