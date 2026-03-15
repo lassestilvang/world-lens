@@ -9,11 +9,49 @@ export interface CameraStreamHandle {
 
 interface CameraStreamProps {
   onFrameCapture?: (frameData: string) => void;
-  fallbackMessage?: string;
 }
 
-const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFrameCapture, fallbackMessage }, ref) => {
+/**
+ * Simple pixel-difference motion detection between two ImageData objects.
+ * Returns a normalized motion level (0 = no motion, 100 = maximum).
+ */
+function computeMotionLevel(prev: ImageData, curr: ImageData): number {
+  const len = prev.data.length;
+  let diff = 0;
+  // Sample every 16th pixel for performance
+  for (let i = 0; i < len; i += 16) {
+    const r = Math.abs(prev.data[i] - curr.data[i]);
+    const g = Math.abs(prev.data[i + 1] - curr.data[i + 1]);
+    const b = Math.abs(prev.data[i + 2] - curr.data[i + 2]);
+    diff += (r + g + b) / 3;
+  }
+  const pixelCount = len / 16;
+  const avgDiff = diff / pixelCount;
+  // Normalize: 0-255 → 0-100
+  return Math.min(100, (avgDiff / 255) * 100 * 5); // x5 amplification for sensitivity
+}
+
+/**
+ * Simple energy-based VAD from an audio analyser.
+ * Returns true if the average energy exceeds a threshold.
+ */
+function detectSpeech(analyser: AnalyserNode, threshold: number = 0.02): boolean {
+  const data = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(data);
+
+  let sumSquares = 0;
+  for (let i = 0; i < data.length; i++) {
+    sumSquares += data[i] * data[i];
+  }
+  const rms = Math.sqrt(sumSquares / data.length);
+  return rms > threshold;
+}
+
+const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFrameCapture }, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const prevFrameRef = useRef<ImageData | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const samplerRef = useRef<FrameSampler | null>(null);
 
@@ -22,7 +60,10 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
       if (!videoRef.current) return null;
 
       const video = videoRef.current;
-      const canvas = document.createElement('canvas');
+      if (!canvasRef.current) {
+        canvasRef.current = document.createElement('canvas');
+      }
+      const canvas = canvasRef.current;
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
 
@@ -31,15 +72,15 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
 
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       return canvas.toDataURL('image/jpeg', 0.8);
-    }
+    },
   }));
 
   useEffect(() => {
-    // Initialize Sampler
     samplerRef.current = new FrameSampler({ motionThreshold: 5.0 });
 
     let stream: MediaStream | null = null;
     let intervalId: NodeJS.Timeout | null = null;
+    let audioCtx: AudioContext | null = null;
 
     async function setupCamera() {
       try {
@@ -52,26 +93,61 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
           video: { facingMode: 'environment' },
           audio: true,
         });
-        
+
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
 
-        // Setup Sampling Loop (Check every 500ms for MVP demo)
+        // ─── Set up real VAD via Web Audio API ──────────────────────
+        try {
+          audioCtx = new AudioContext();
+          const audioSource = audioCtx.createMediaStreamSource(stream);
+          const analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 2048;
+          audioSource.connect(analyser);
+          analyserRef.current = analyser;
+        } catch (audioErr) {
+          console.warn('Audio analyser setup failed, VAD will be disabled:', audioErr);
+        }
+
+        // ─── Create offscreen canvas for motion detection ──────────
+        if (!canvasRef.current) {
+          canvasRef.current = document.createElement('canvas');
+        }
+
+        // ─── Sampling loop (every 500ms) ───────────────────────────
         intervalId = setInterval(() => {
-          if (!samplerRef.current || !onFrameCapture) return;
+          if (!samplerRef.current || !onFrameCapture || !videoRef.current) return;
 
-          // Mocked VAD and Motion for demo logic integration
-          // In real production, this would use web audio api for VAD and deviceorientation/sensors
-          const mockIsSpeaking = false;
-          const mockMotion = 0; 
+          const video = videoRef.current;
+          if (video.videoWidth === 0 || video.videoHeight === 0) return;
 
-          if (samplerRef.current.shouldCapture(mockIsSpeaking, mockMotion)) {
-            const frame = (ref as React.RefObject<CameraStreamHandle>).current?.captureFrame();
-            if (frame) onFrameCapture(frame);
+          const canvas = canvasRef.current!;
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return;
+
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+          // Compute motion level
+          let motionLevel = 0;
+          if (prevFrameRef.current && prevFrameRef.current.data.length === currentFrame.data.length) {
+            motionLevel = computeMotionLevel(prevFrameRef.current, currentFrame);
+          }
+          prevFrameRef.current = currentFrame;
+
+          // Detect speech via VAD
+          const isSpeaking = analyserRef.current ? detectSpeech(analyserRef.current) : false;
+
+          // Use the FrameSampler to decide if we should capture
+          if (samplerRef.current.shouldCapture(isSpeaking, motionLevel)) {
+            const frameDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            onFrameCapture(frameDataUrl);
           }
         }, 500);
-
       } catch (err) {
         console.error('Error accessing media devices.', err);
         setError('Unable to access camera/microphone');
@@ -82,42 +158,30 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
 
     return () => {
       if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
       }
       if (intervalId) {
         clearInterval(intervalId);
+      }
+      if (audioCtx && audioCtx.state !== 'closed') {
+        audioCtx.close().catch(console.error);
       }
     };
   }, [onFrameCapture, ref]);
 
   return (
-    <div className="relative w-full h-full bg-black">
+    <div className="relative w-full h-full">
       {error ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-red-950/20 text-red-500 p-4 text-center z-10">
+        <div className="absolute inset-0 flex items-center justify-center bg-red-950/20 text-red-500 p-4 text-center">
           {error}
         </div>
       ) : null}
-      
-      {fallbackMessage && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-md z-20">
-          <div className="text-center p-6 border border-zinc-700 bg-zinc-900/90 rounded-2xl max-w-sm">
-            <div className="w-12 h-12 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center mx-auto mb-4 border border-amber-500/30">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">Analysis Paused</h3>
-            <p className="text-sm text-zinc-300">{fallbackMessage}</p>
-          </div>
-        </div>
-      )}
-
       <video
         ref={videoRef}
         autoPlay
         playsInline
         muted
-        className={`w-full h-full object-cover ${fallbackMessage ? 'opacity-30 blur-md grayscale' : ''}`}
+        className="w-full h-full object-cover"
         data-testid="video-stream"
       />
     </div>

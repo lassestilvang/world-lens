@@ -1,48 +1,113 @@
 'use client';
 
+import { useState } from 'react';
+
 interface DebugPanelProps {
   visible: boolean;
   grounded?: boolean;
-  memory?: unknown;
+  memory?: string[];
+  sessionId?: string;
+  wsConnected?: boolean;
+  lastToolCall?: { name: string; input: Record<string, unknown> } | null;
+  lastAnalysis?: Record<string, unknown> | null;
+  latencyMs?: number | null;
 }
 
-export default function DebugPanel({ visible, grounded = false, memory }: DebugPanelProps) {
+export default function DebugPanel({
+  visible,
+  grounded,
+  memory = [],
+  sessionId,
+  wsConnected,
+  lastToolCall,
+  lastAnalysis,
+  latencyMs,
+}: DebugPanelProps) {
+  const [expanded, setExpanded] = useState(true);
+
   if (!visible) return null;
 
   return (
-    <div 
-      className="absolute bottom-4 right-4 z-50 bg-black/80 border border-zinc-800 rounded-lg p-4 w-72 backdrop-blur-sm shadow-2xl max-h-[80vh] overflow-y-auto"
+    <div
+      className="bg-zinc-900/95 backdrop-blur-sm border border-zinc-700 rounded-2xl overflow-hidden shadow-2xl"
       data-testid="debug-panel"
     >
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">System State</h3>
-        {grounded ? (
-          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-green-500/20 text-green-400 border border-green-500/30">
-            Grounded
+      {/* Header */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-4 py-2.5 bg-zinc-800/50 border-b border-zinc-700 hover:bg-zinc-800/80 transition-colors"
+        data-testid="debug-toggle"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
+            🔍 Debug Panel
           </span>
-        ) : (
-          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30">
-            Not Grounded
-          </span>
-        )}
-      </div>
-      <div className="space-y-1 mb-4">
-        <div className="flex justify-between">
-          <span className="text-[10px] text-zinc-500">OCR Confidence:</span>
-          <span className="text-[10px] font-mono text-zinc-300">98%</span>
+          {sessionId && (
+            <span className="text-[9px] text-zinc-600 font-mono">
+              {sessionId.slice(0, 8)}
+            </span>
+          )}
         </div>
-        <div className="flex justify-between">
-          <span className="text-[10px] text-zinc-500">Latency (p95):</span>
-          <span className="text-[10px] font-mono text-zinc-300">1.2s</span>
+        <div className="flex items-center gap-2">
+          {wsConnected !== undefined && (
+            <span className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase ${wsConnected ? 'text-green-400' : 'text-zinc-500'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${wsConnected ? 'bg-green-400' : 'bg-zinc-600'}`} />
+              {wsConnected ? 'Voice' : 'No Voice'}
+            </span>
+          )}
+          {grounded && (
+            <span className="text-[9px] text-emerald-400 font-bold uppercase">✓ Grounded</span>
+          )}
+          <span className="text-zinc-500 text-xs">{expanded ? '▾' : '▸'}</span>
         </div>
-      </div>
+      </button>
 
-      {memory && (
-        <div className="mt-4 border-t border-zinc-800 pt-3">
-          <h4 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2">World Memory</h4>
-          <pre className="text-[10px] text-zinc-300 font-mono whitespace-pre-wrap break-all bg-zinc-900/50 p-2 rounded">
-            {JSON.stringify(memory, null, 2)}
-          </pre>
+      {/* Body */}
+      {expanded && (
+        <div className="p-3 space-y-3 max-h-64 overflow-y-auto">
+          {/* Latency */}
+          {latencyMs !== undefined && latencyMs !== null && (
+            <div>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">Latency</span>
+              <p className={`text-xs font-mono mt-0.5 ${latencyMs <= 1500 ? 'text-green-400' : 'text-amber-400'}`}>
+                {latencyMs}ms {latencyMs <= 1500 ? '✓' : '⚠ slow'}
+              </p>
+            </div>
+          )}
+
+          {/* Last Tool Call */}
+          {lastToolCall && (
+            <div>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">Last Tool Call</span>
+              <pre className="text-[10px] font-mono text-blue-300 mt-0.5 bg-zinc-950 rounded-lg p-2 overflow-x-auto">
+{JSON.stringify({ tool: lastToolCall.name, input: lastToolCall.input }, null, 2)}
+              </pre>
+            </div>
+          )}
+
+          {/* Last Analysis */}
+          {lastAnalysis && (
+            <div>
+              <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">Last Analysis</span>
+              <pre className="text-[10px] font-mono text-purple-300 mt-0.5 bg-zinc-950 rounded-lg p-2 overflow-x-auto max-h-24 overflow-y-auto">
+{JSON.stringify(lastAnalysis, null, 2)}
+              </pre>
+            </div>
+          )}
+
+          {/* World Memory */}
+          <div>
+            <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">
+              World Memory ({memory.length})
+            </span>
+            {memory.length === 0 ? (
+              <p className="text-[10px] text-zinc-600 mt-0.5 italic">No observations yet</p>
+            ) : (
+              <pre className="text-[10px] font-mono text-emerald-300 mt-0.5 bg-zinc-950 rounded-lg p-2 overflow-x-auto max-h-32 overflow-y-auto">
+{JSON.stringify(memory, null, 2)}
+              </pre>
+            )}
+          </div>
         </div>
       )}
     </div>

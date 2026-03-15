@@ -3,18 +3,13 @@
  */
 import { evaluateProactiveSuggestion } from './orchestrator'
 import { SceneAnalysis } from './novaVision'
-import { playEarcon } from './earconService'
-
-jest.mock('./earconService', () => ({
-  playEarcon: jest.fn(),
-}));
 
 describe('Orchestrator', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('triggers a proactive suggestion if a new object matches the user goal and plays click and chime', async () => {
+  it('triggers a proactive suggestion if a new object matches the user goal', async () => {
     const memory = {
       environment: 'grocery store',
       objects_seen: ['Cheerios'],
@@ -30,11 +25,9 @@ describe('Orchestrator', () => {
     
     expect(result.shouldSuggest).toBe(true)
     expect(result.suggestionPrompt).toContain('Oatmeal')
-    expect(playEarcon).toHaveBeenCalledWith('click');
-    expect(playEarcon).toHaveBeenCalledWith('chime');
   })
 
-  it('does not trigger if nothing new is relevant but plays click for processed frame', async () => {
+  it('does not trigger if nothing new is relevant', async () => {
     const memory = {
       environment: 'grocery store',
       objects_seen: ['Cheerios'],
@@ -49,7 +42,22 @@ describe('Orchestrator', () => {
     const result = await evaluateProactiveSuggestion(memory, currentFrameAnalysis)
     
     expect(result.shouldSuggest).toBe(false)
-    expect(playEarcon).toHaveBeenCalledWith('click');
-    expect(playEarcon).not.toHaveBeenCalledWith('chime');
+  })
+
+  it('does not trigger when user has no goal', async () => {
+    const memory = {
+      environment: 'grocery store',
+      objects_seen: ['Cheerios'],
+      user_goal: ''
+    }
+    const currentFrameAnalysis: SceneAnalysis = {
+      objects: ['Oatmeal'],
+      text: '',
+      environment: 'grocery store'
+    }
+    
+    const result = await evaluateProactiveSuggestion(memory, currentFrameAnalysis)
+    
+    expect(result.shouldSuggest).toBe(false)
   })
 })

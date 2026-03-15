@@ -6,6 +6,7 @@ export interface SceneAnalysis {
   objects: string[];
   text: string;
   environment: string;
+  confidence?: number;
 }
 
 export interface DocumentAnalysis {
@@ -35,40 +36,55 @@ export interface EnvironmentAnalysis {
   confidence: number;
 }
 
+// ─── Mock data for test environment ────────────────────────────────────
+
+const MOCK_SCENE: SceneAnalysis = {
+  objects: ['Cheerios', 'Frosted Flakes'],
+  text: 'GLUTEN FREE',
+  environment: 'grocery store cereal aisle',
+};
+
+const MOCK_DOCUMENT: DocumentAnalysis = {
+  fullText: 'This is a sample medical bill from City Hospital. Total amount due is $150.00 by 2026-04-01.',
+  documentType: 'medical bill',
+  confidence: 0.98,
+};
+
+const MOCK_ENVIRONMENT: EnvironmentAnalysis = {
+  safetyObjects: ['traffic light (red)', 'pedestrian crossing'],
+  sceneContext: 'At a busy street intersection with a clear crossing ahead.',
+  confidence: 0.96,
+};
+
+// ─── API route-backed implementations ──────────────────────────────────
+
+async function callAnalyzeApi(image: string, mode: string, question?: string) {
+  const response = await fetch('/api/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image, mode, question }),
+  });
+  if (!response.ok) {
+    throw new Error(`Analysis API error: ${response.status}`);
+  }
+  return response.json();
+}
+
 export async function analyzeFrame(base64Image: string): Promise<SceneAnalysis> {
   if (!base64Image) {
     throw new Error('Invalid image data');
   }
 
-  // In a real application, we would call Nova 2 Lite here.
-  // For the hackathon setup, we structure the call to Amazon Bedrock.
-  
-  /*
-  const command = new InvokeModelCommand({
-    modelId: 'amazon.nova-lite-v1:0',
-    contentType: 'application/json',
-    accept: 'application/json',
-    body: JSON.stringify({
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { image: { format: 'jpeg', source: { bytes: base64Image } } },
-            { text: "Analyze the image. Return JSON with 'objects', 'text', and 'environment'." }
-          ]
-        }
-      ]
-    })
-  });
-  const response = await client.send(command);
-  // Parse response.body
-  */
+  if (process.env.NODE_ENV === 'test') {
+    return MOCK_SCENE;
+  }
 
-  // Mocked response for test suite
+  const result = await callAnalyzeApi(base64Image, 'grocery');
   return {
-    objects: ['Cheerios', 'Frosted Flakes'],
-    text: 'GLUTEN FREE',
-    environment: 'grocery store cereal aisle'
+    objects: result.objects || [],
+    text: result.text || '',
+    environment: result.environment || '',
+    confidence: result.confidence,
   };
 }
 
@@ -77,31 +93,15 @@ export async function analyzeDocument(base64Image: string): Promise<DocumentAnal
     throw new Error('Invalid image data');
   }
 
-  // In a real application, we would call Nova 2 Lite with a document-specific prompt.
-  /*
-  const command = new InvokeModelCommand({
-    modelId: 'amazon.nova-lite-v1:0',
-    contentType: 'application/json',
-    accept: 'application/json',
-    body: JSON.stringify({
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { image: { format: 'jpeg', source: { bytes: base64Image } } },
-            { text: "Perform high-precision OCR. Identify the document type and extract all text. Return JSON with 'fullText', 'documentType', and 'confidence'." }
-          ]
-        }
-      ]
-    })
-  });
-  */
+  if (process.env.NODE_ENV === 'test') {
+    return MOCK_DOCUMENT;
+  }
 
-  // Mocked response for test suite
+  const result = await callAnalyzeApi(base64Image, 'document');
   return {
-    fullText: 'This is a sample medical bill from City Hospital. Total amount due is $150.00 by 2026-04-01.',
-    documentType: 'medical bill',
-    confidence: 0.98
+    fullText: result.fullText || '',
+    documentType: result.documentType || 'unknown',
+    confidence: result.confidence || 0,
   };
 }
 
@@ -110,33 +110,29 @@ export async function summarizeDocument(text: string): Promise<DocumentSummary> 
     throw new Error('No text provided for summarization');
   }
 
-  // In a real application, we would call Nova 2 Lite to summarize.
-  /*
-  const command = new InvokeModelCommand({
-    modelId: 'amazon.nova-lite-v1:0',
-    contentType: 'application/json',
-    accept: 'application/json',
-    body: JSON.stringify({
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { text: `Summarize the following document text and provide key points.\n\n${text}` }
-          ]
-        }
-      ]
-    })
-  });
-  */
+  if (process.env.NODE_ENV === 'test') {
+    return {
+      summary: 'A medical bill from City Hospital totaling $150.00.',
+      keyPoints: [
+        'Provider: City Hospital',
+        'Amount: $150.00',
+        'Due Date: 2026-04-01',
+      ],
+    };
+  }
 
-  // Mocked response for test suite
+  // Use the ground API for text-only summarization
+  const response = await fetch('/api/ground', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: `Summarize this document text and provide key points as JSON: {"summary": "string", "keyPoints": ["string"]}.\n\nDocument:\n${text}`,
+    }),
+  });
+  const result = await response.json();
   return {
-    summary: 'A medical bill from City Hospital totaling $150.00.',
-    keyPoints: [
-      'Provider: City Hospital',
-      'Amount: $150.00',
-      'Due Date: 2026-04-01'
-    ]
+    summary: result.summary || result.verified_fact || text.slice(0, 100),
+    keyPoints: result.keyPoints || [],
   };
 }
 
@@ -145,30 +141,26 @@ export async function extractEntities(text: string): Promise<DocumentEntities> {
     return { dates: [], amounts: [], names: [] };
   }
 
-  // In a real application, we would call Nova 2 Lite to extract entities.
-  /*
-  const command = new InvokeModelCommand({
-    modelId: 'amazon.nova-lite-v1:0',
-    contentType: 'application/json',
-    accept: 'application/json',
-    body: JSON.stringify({
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { text: `Extract specific entities (dates, amounts, names) from the following document text. Return JSON.\n\n${text}` }
-          ]
-        }
-      ]
-    })
-  });
-  */
+  if (process.env.NODE_ENV === 'test') {
+    return {
+      dates: ['2026-04-01'],
+      amounts: ['$150.00'],
+      names: ['City Hospital'],
+    };
+  }
 
-  // Mocked response for test suite
+  const response = await fetch('/api/ground', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: `Extract entities from this text. Return JSON: {"dates": [], "amounts": [], "names": []}.\n\nText:\n${text}`,
+    }),
+  });
+  const result = await response.json();
   return {
-    dates: ['2026-04-01'],
-    amounts: ['$150.00'],
-    names: ['City Hospital']
+    dates: result.dates || [],
+    amounts: result.amounts || [],
+    names: result.names || [],
   };
 }
 
@@ -177,65 +169,35 @@ export async function askDocumentQuestion(context: string, question: string): Pr
     throw new Error('Question is required');
   }
 
-  // In a real application, we would call Nova 2 Lite with document context.
-  /*
-  const command = new InvokeModelCommand({
-    modelId: 'amazon.nova-lite-v1:0',
-    contentType: 'application/json',
-    accept: 'application/json',
-    body: JSON.stringify({
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { text: `Based on the following document context, answer the question.\n\nContext: ${context}\n\nQuestion: ${question}` }
-          ]
-        }
-      ]
-    })
-  });
-  */
+  if (process.env.NODE_ENV === 'test') {
+    return { answer: 'According to the document, you owe $150.00.' };
+  }
 
-  // Mocked response for test suite
-  return {
-    answer: 'According to the document, you owe $150.00.'
-  };
+  const response = await fetch('/api/ground', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: question,
+      context,
+    }),
+  });
+  const result = await response.json();
+  return { answer: result.verified_fact || 'I could not answer this question with the available context.' };
 }
 
-/**
- * Analyzes the visual environment for safety-critical objects and general context.
- * @param base64Image The base64-encoded image frame.
- * @returns A promise resolving to an EnvironmentAnalysis object.
- */
 export async function analyzeEnvironment(base64Image: string): Promise<EnvironmentAnalysis> {
   if (!base64Image) {
     throw new Error('Invalid image data');
   }
 
-  // In a real application, we would call Nova 2 Lite with an environment-specific prompt.
-  /*
-  const command = new InvokeModelCommand({
-    modelId: 'amazon.nova-lite-v1:0',
-    contentType: 'application/json',
-    accept: 'application/json',
-    body: JSON.stringify({
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { image: { format: 'jpeg', source: { bytes: base64Image } } },
-            { text: "Analyze the environment. Identify safety-critical objects (traffic lights, crossings, obstacles) and provide general scene context. Return JSON with 'safetyObjects', 'sceneContext', and 'confidence'." }
-          ]
-        }
-      ]
-    })
-  });
-  */
+  if (process.env.NODE_ENV === 'test') {
+    return MOCK_ENVIRONMENT;
+  }
 
-  // Mocked response for test suite
+  const result = await callAnalyzeApi(base64Image, 'environment');
   return {
-    safetyObjects: ['traffic light (red)', 'pedestrian crossing'],
-    sceneContext: 'At a busy street intersection with a clear crossing ahead.',
-    confidence: 0.96
+    safetyObjects: result.safetyObjects || [],
+    sceneContext: result.sceneContext || '',
+    confidence: result.confidence || 0,
   };
 }

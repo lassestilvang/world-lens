@@ -41,8 +41,13 @@ describe('CameraStream', () => {
     expect(videoElement.tagName).toBe('VIDEO')
   })
 
-  it('renders a fallback message overlay when provided', () => {
-    render(<CameraStream fallbackMessage="I cannot read this clearly" />)
-    expect(screen.getByText(/I cannot read this clearly/i)).toBeInTheDocument()
+  it('shows error message when camera access fails', async () => {
+    mockGetUserMedia.mockRejectedValue(new Error('Permission denied'))
+    
+    render(<CameraStream />)
+    
+    await waitFor(() => {
+      expect(screen.getByText(/Unable to access camera\/microphone/i)).toBeInTheDocument()
+    })
   })
 })

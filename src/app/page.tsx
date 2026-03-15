@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import CameraStream from '../components/CameraStream';
 import { ModeSelector, AssistantMode } from '../components/ModeSelector';
 import DocumentOverlay from '../components/DocumentOverlay';
 import DebugPanel from '../components/DebugPanel';
-import ProactiveAssistOverlay from '../components/ProactiveAssistOverlay';
 import { analyzeFrame, analyzeDocument, analyzeEnvironment, SceneAnalysis, EnvironmentAnalysis } from '../services/novaVision';
 import { evaluateProactiveSuggestion } from '../services/orchestrator';
 import { generateSpeechResponse } from '../services/novaSonic';
@@ -14,6 +13,7 @@ import { playMedicationEarcon } from '../utils/audioService';
 import { detectModeSwitch } from '../utils/modeSwitching';
 import { suggestModeFromScene } from '../utils/modeDetection';
 import { isImmediateHazard } from '../utils/safetyInterrupt';
+import { useVoiceSession } from '../hooks/useVoiceSession';
 
 export default function Page() {
   const [mode, setMode] = useState<AssistantMode>('grocery');
@@ -23,17 +23,44 @@ export default function Page() {
   const [lastSuggestion, setLastResponse] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [modeSuggestion, setModeSuggestion] = useState<AssistantMode | null>(null);
-  const [fallbackMessage, setFallbackMessage] = useState<string | undefined>(undefined);
-  
+  const [showDebug, setShowDebug] = useState<boolean>(true);
+  const [lastAnalysis, setLastAnalysis] = useState<Record<string, unknown> | null>(null);
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
+
+  // Session ID — stable across the session lifecycle
+  const sessionIdRef = useRef<string>('');
+  useEffect(() => {
+    sessionIdRef.current = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `session-${Date.now()}`;
+  }, []);
+
+  // Voice session hook
+  const voice = useVoiceSession(sessionIdRef.current);
+
   const handleSetGoal = () => {
-    setGoal(inputValue);
-    setInputValue('');
+    if (inputValue.trim()) {
+      setGoal(inputValue.trim());
+      setInputValue('');
+    }
+  };
+
+  const handleVoiceToggle = async () => {
+    if (!voice.isConnected) {
+      await voice.startSession();
+      await voice.toggleCapture();
+    } else if (voice.isCapturing) {
+      await voice.toggleCapture();
+    } else {
+      await voice.toggleCapture();
+    }
   };
 
   const onFrameCapture = useCallback(async (frameData: string) => {
     try {
       setIsProcessing(true);
-      
+      const startTime = Date.now();
+
       let analysis;
       if (mode === 'document') {
         analysis = await analyzeDocument(frameData);
@@ -42,7 +69,10 @@ export default function Page() {
       } else {
         analysis = await analyzeFrame(frameData);
       }
-      
+
+      setLatencyMs(Date.now() - startTime);
+      setLastAnalysis(analysis as unknown as Record<string, unknown>);
+
       const objects = 'safetyObjects' in analysis ? analysis.safetyObjects : analysis.objects;
       const context = 'sceneContext' in analysis ? analysis.sceneContext : analysis.environment;
 
@@ -51,13 +81,12 @@ export default function Page() {
         const hazard = objects.find((o: string) => o.includes('red') || o.includes('obstacle'));
         setLastResponse(`Hazard Detected: ${hazard}`);
         playMedicationEarcon('warning');
-        // Interrupt flow logic would trigger speech here
       }
 
       // 2. Suggest Mode Improvements
       const suggested = suggestModeFromScene({
         objects,
-        environment: context || ''
+        environment: context || '',
       }, mode);
       setModeSuggestion(suggested);
 
@@ -80,7 +109,7 @@ export default function Page() {
         const suggestionResult = await evaluateProactiveSuggestion({
           environment: context || 'unknown',
           objects_seen: updatedMemory,
-          user_goal: goal || 'stay safe'
+          user_goal: goal || 'stay safe',
         }, analysis as SceneAnalysis);
 
         if (suggestionResult.shouldSuggest && suggestionResult.suggestionPrompt) {
@@ -88,48 +117,62 @@ export default function Page() {
             setLastResponse(suggestionResult.suggestionPrompt);
             playMedicationEarcon('success');
             await generateSpeechResponse(
-              suggestionResult.suggestionPrompt, 
+              suggestionResult.suggestionPrompt,
               buildMemoryContext(updatedMemory)
             );
           }
         }
       }
-    } catch (err: unknown) {
+    } catch (err) {
       console.error('Error in orchestration loop:', err);
-      // For MVP, if error has a refusal message, set it as fallback
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      if (errorMessage.includes('read this clearly')) {
-        setFallbackMessage('I cannot read this clearly. Please move closer or hold steady.');
-      }
     } finally {
       setIsProcessing(false);
     }
   }, [goal, memory, lastSuggestion, mode]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-zinc-950 text-white relative overflow-hidden">
-      <div className="w-full max-w-md flex flex-col gap-6 z-10">
+    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-zinc-950 text-white relative overflow-hidden safe-area-padding">
+      <div className="w-full max-w-md flex flex-col gap-4 z-10">
+        {/* Header */}
         <header className="text-center">
           <h1 className="text-3xl font-bold tracking-tight">WorldLens</h1>
-          <p className="text-sm text-zinc-400 mt-2 tracking-wide uppercase font-semibold">
+          <p className="text-sm text-zinc-400 mt-1 tracking-wide uppercase font-semibold">
             {mode} Mode
           </p>
         </header>
 
-        <section 
+        {/* Camera + Overlays */}
+        <section
           className="aspect-[3/4] bg-zinc-900 rounded-3xl border border-zinc-800 flex items-center justify-center relative overflow-hidden shadow-2xl shadow-black/50"
           data-testid="camera-container"
         >
-          <CameraStream onFrameCapture={onFrameCapture} fallbackMessage={fallbackMessage} />
-          
-          <DocumentOverlay active={mode === 'document'} status={isProcessing ? 'capturing' : 'searching'} />
-          
-          <ProactiveAssistOverlay suggestion={lastSuggestion} />
+          <CameraStream onFrameCapture={onFrameCapture} />
 
+          <DocumentOverlay active={mode === 'document'} status={isProcessing ? 'capturing' : 'searching'} />
+
+          {/* Voice Transcript Overlay */}
+          {voice.transcript && (
+            <div className="absolute top-14 left-4 right-4 bg-zinc-950/80 backdrop-blur p-3 rounded-xl border border-zinc-700 animate-in fade-in">
+              <p className="text-[10px] font-black uppercase tracking-widest mb-1 text-zinc-500">Transcript</p>
+              <p className="text-sm text-zinc-200 italic">"{voice.transcript}"</p>
+            </div>
+          )}
+
+          {/* AI Insight / Hazard Alert */}
+          {lastSuggestion && (
+            <div className={`absolute bottom-4 left-4 right-4 ${lastSuggestion.includes('Hazard') ? 'bg-red-600/95 border-red-400' : 'bg-blue-600/95 border-blue-400'} backdrop-blur p-4 rounded-2xl border shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500`}>
+              <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-70">
+                {lastSuggestion.includes('Hazard') ? 'Safety Alert' : 'AI Insight'}
+              </p>
+              <p className="text-sm leading-snug font-medium">{lastSuggestion}</p>
+            </div>
+          )}
+
+          {/* Mode Suggestion */}
           {modeSuggestion && (
             <div className="absolute top-4 left-4 right-4 bg-zinc-900/90 backdrop-blur p-3 rounded-xl border border-zinc-700 flex items-center justify-between animate-in slide-in-from-top-4">
               <p className="text-xs text-zinc-300">Suggest switching to <b>{modeSuggestion}</b>?</p>
-              <button 
+              <button
                 onClick={() => { setMode(modeSuggestion); setModeSuggestion(null); }}
                 className="text-[10px] bg-white text-black px-2 py-1 rounded font-bold uppercase"
               >
@@ -139,46 +182,92 @@ export default function Page() {
           )}
         </section>
 
-        <ModeSelector currentMode={mode} onModeChange={setMode} />
-
-        {mode !== 'environment' && (
-          <div className="space-y-3">
-            {goal && (
-              <div className="px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400 text-xs font-bold uppercase tracking-tight">
-                Current Goal: {goal}
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <input 
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder={mode === 'medication' ? 'e.g., check dosage' : 'e.g., find healthy cereal'}
-                className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition-all placeholder:text-zinc-600"
-              />
-              <button 
-                onClick={handleSetGoal}
-                className="bg-blue-600 hover:bg-blue-500 active:scale-95 px-5 py-3 rounded-xl text-sm font-bold transition-all shadow-lg shadow-blue-900/20"
-              >
-                Set
-              </button>
-            </div>
+        {/* Voice & Voice Error */}
+        {voice.error && (
+          <div className="px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs">
+            {voice.error}
           </div>
         )}
 
-        <DebugPanel 
-          visible={true} 
-          grounded={true} 
-          memory={{
-            mode,
-            objects_seen: memory,
-            user_goal: goal || 'None'
-          }} 
+        {/* Mode Selector */}
+        <ModeSelector currentMode={mode} onModeChange={setMode} />
+
+        {/* Voice Button + Text Input */}
+        <div className="space-y-3">
+          {/* Voice Mic Button */}
+          <button
+            onClick={handleVoiceToggle}
+            className={`w-full flex items-center justify-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all shadow-lg ${
+              voice.isCapturing
+                ? 'bg-red-600 hover:bg-red-500 shadow-red-900/30 animate-pulse-subtle'
+                : voice.isConnected
+                ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/30'
+                : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/30'
+            }`}
+            data-testid="voice-button"
+          >
+            <span className="text-lg">
+              {voice.isCapturing ? '🔴' : voice.isConnected ? '🎙️' : '🎤'}
+            </span>
+            {voice.isCapturing
+              ? 'Listening... Tap to stop'
+              : voice.isConnected
+              ? 'Tap to speak'
+              : 'Start Voice Session'}
+          </button>
+
+          {/* Goal Input */}
+          {mode !== 'environment' && (
+            <>
+              {goal && (
+                <div className="px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400 text-xs font-bold uppercase tracking-tight">
+                  Current Goal: {goal}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSetGoal()}
+                  placeholder={mode === 'medication' ? 'e.g., check dosage' : 'e.g., find healthy cereal'}
+                  className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 transition-all placeholder:text-zinc-600"
+                />
+                <button
+                  onClick={handleSetGoal}
+                  className="bg-blue-600 hover:bg-blue-500 active:scale-95 px-5 py-3 rounded-xl text-sm font-bold transition-all shadow-lg shadow-blue-900/20"
+                >
+                  Set
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Debug Panel */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setShowDebug(!showDebug)}
+            className="text-[10px] text-zinc-500 uppercase tracking-widest hover:text-zinc-300 transition-colors"
+          >
+            {showDebug ? 'Hide' : 'Show'} Debug
+          </button>
+        </div>
+        <DebugPanel
+          visible={showDebug}
+          grounded={true}
+          memory={memory}
+          sessionId={sessionIdRef.current}
+          wsConnected={voice.isConnected}
+          lastToolCall={voice.lastToolCall}
+          lastAnalysis={lastAnalysis}
+          latencyMs={latencyMs}
         />
 
-        <footer className="flex flex-col items-center gap-2">
-          <div 
+        {/* Status Footer */}
+        <footer className="flex flex-col items-center gap-2 pb-4">
+          <div
             className="flex items-center gap-3 px-5 py-2.5 bg-zinc-900/50 rounded-full border border-zinc-800 backdrop-blur"
             data-testid="status-indicator"
           >
