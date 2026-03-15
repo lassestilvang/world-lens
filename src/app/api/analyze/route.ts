@@ -99,6 +99,23 @@ ${baseRules}`;
 }
 
 export async function POST(request: NextRequest) {
+  // Runtime check for environment variables in Amplify
+  if (!process.env.WORLDLENS_AWS_ACCESS_KEY_ID || !process.env.WORLDLENS_AWS_SECRET_ACCESS_KEY) {
+    console.error('[/api/analyze] Missing custom credentials in process.env');
+    return NextResponse.json(
+      {
+        error: 'Server configuration error: Missing credentials.',
+        code: 'CONFIG_ERROR',
+        debug: {
+          hasAccessKey: !!process.env.WORLDLENS_AWS_ACCESS_KEY_ID,
+          hasSecretKey: !!process.env.WORLDLENS_AWS_SECRET_ACCESS_KEY,
+          availableKeys: Object.keys(process.env).filter(k => k.includes('WORLDLENS')),
+        },
+      },
+      { status: 500 }
+    );
+  }
+
   try {
     const body: AnalyzeRequest = await request.json();
 

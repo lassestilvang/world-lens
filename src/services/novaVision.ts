@@ -69,6 +69,10 @@ async function callAnalyzeApi(image: string, mode: string, question?: string) {
       const body = await response.json();
       if (body.error) errorMessage = body.error;
       if (body.code) errorCode = body.code;
+      // Log structured debug info if present
+      if (body.debug) {
+        console.error('[VisionService] Detailed Error:', body.debug);
+      }
     } catch {
       // body wasn't JSON — keep the generic message
     }
