@@ -10,8 +10,9 @@ describe('Memory Optimization', () => {
 
     const result = optimizeMemory(memory);
     expect(result.isSummarized).toBe(true);
-    expect(result.summary).toContain('Looked at 21 different cereals');
-    expect(result.memory.length).toBe(0); // Recent memory cleared after summary
+    expect(result.summary).toContain('Observed 16 items previously');
+    expect(result.memory.length).toBe(6); // 1 summary + 5 recent items
+    expect(result.memory[0]).toBe(result.summary);
   });
 
   it('should not summarize if count is <= 20', () => {

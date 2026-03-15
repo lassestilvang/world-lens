@@ -23,13 +23,13 @@ describe('CameraStream', () => {
     jest.restoreAllMocks()
   })
 
-  it('requests camera and audio access on mount', async () => {
+  it('requests camera access on mount', async () => {
     render(<CameraStream />)
     
     await waitFor(() => {
       expect(mockGetUserMedia).toHaveBeenCalledWith({
         video: { facingMode: 'environment' },
-        audio: true
+        audio: false
       })
     })
   })
@@ -47,7 +47,7 @@ describe('CameraStream', () => {
     render(<CameraStream />)
     
     await waitFor(() => {
-      expect(screen.getByText(/Unable to access camera\/microphone/i)).toBeInTheDocument()
+      expect(screen.getByText(/Unable to access camera/i)).toBeInTheDocument()
     })
   })
 })

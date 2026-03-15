@@ -22,7 +22,21 @@ export const MEDICAL_TOOL_SCHEMA = {
   }
 };
 
-export async function searchGroceryPrice(item: string): Promise<unknown> {
+export interface GroceryPriceResult {
+  item: string;
+  price: string;
+  currency: string;
+  source: string;
+}
+
+export interface MedicalDatabaseResult {
+  drug: string;
+  indications: string;
+  warnings: string;
+  source: string;
+}
+
+export async function searchGroceryPrice(item: string): Promise<GroceryPriceResult> {
   if (!item) throw new Error('Item name is required');
   
   // Mock external provider
@@ -34,7 +48,7 @@ export async function searchGroceryPrice(item: string): Promise<unknown> {
   };
 }
 
-export async function searchMedicalDatabase(drug: string): Promise<unknown> {
+export async function searchMedicalDatabase(drug: string): Promise<MedicalDatabaseResult> {
   if (!drug) throw new Error('Drug name is required');
 
   // Mock external provider

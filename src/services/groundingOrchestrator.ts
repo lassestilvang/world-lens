@@ -56,7 +56,7 @@ export async function triggerGroundingTool(context: OrchestrationContext): Promi
 
   if (orchestrated.tool === MEDICAL_TOOL_SCHEMA.name) {
     const args = orchestrated.args as { drug: string };
-    const rawResult = await searchMedicalDatabase(args.drug) as { drug: string; indications: string; warnings: string; source: string };
+    const rawResult = await searchMedicalDatabase(args.drug);
     return {
       verified_fact: `Verified: ${rawResult.drug} is used for ${rawResult.indications}. Warnings: ${rawResult.warnings} (via ${rawResult.source}).`
     };
