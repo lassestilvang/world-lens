@@ -42,7 +42,7 @@ export class WorldLensStack extends cdk.Stack {
     // ─── Bedrock IAM Policy ───────────────────────────────────────────
 
     const bedrockRegion = 'us-east-1';
-    const bedrockModelArn = `arn:aws:bedrock:${bedrockRegion}::foundation-model/amazon.nova-sonic-v1:0`;
+    const bedrockModelArn = `arn:aws:bedrock:${bedrockRegion}::foundation-model/amazon.nova-2-sonic-v1:0`;
 
     const bedrockPolicy = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,

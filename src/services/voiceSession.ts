@@ -19,7 +19,7 @@ import {
 } from '@aws-sdk/client-bedrock-runtime';
 import { fromCognitoIdentityPool } from '@aws-sdk/credential-provider-cognito-identity';
 
-const SONIC_MODEL_ID = 'amazon.nova-sonic-v1:0';
+const SONIC_MODEL_ID = 'amazon.nova-2-sonic-v1:0';
 
 export interface VoiceSessionConfig {
   sessionId: string;

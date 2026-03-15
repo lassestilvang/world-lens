@@ -36,7 +36,7 @@ export async function extractMedicationInfo(base64Image: string): Promise<Medica
   // In a real application, we would call Nova 2 Lite here.
   /*
   const command = new InvokeModelCommand({
-    modelId: 'amazon.nova-lite-v1:0',
+    modelId: 'amazon.nova-2-lite-v1:0',
     contentType: 'application/json',
     accept: 'application/json',
     body: JSON.stringify({
