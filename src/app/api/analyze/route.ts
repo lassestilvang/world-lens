@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
 
-const client = new BedrockRuntimeClient({
-  region: 'us-east-1',
-});
+const REGION = process.env.AWS_REGION || 'us-east-1';
+
+function defaultNovaLiteInferenceProfileId(region: string): string {
+  if (region.startsWith('eu-')) return 'eu.amazon.nova-2-lite-v1:0';
+  if (region.startsWith('us-')) return 'us.amazon.nova-2-lite-v1:0';
+  if (region.startsWith('ap-')) return 'apac.amazon.nova-2-lite-v1:0';
+  if (region.startsWith('ca-')) return 'ca.amazon.nova-2-lite-v1:0';
+  if (region.startsWith('jp-')) return 'jp.amazon.nova-2-lite-v1:0';
+  return 'us.amazon.nova-2-lite-v1:0';
+}
 
 const NOVA_LITE_MODEL_ID =
-  process.env.NOVA_LITE_INFERENCE_PROFILE_ARN || 'amazon.nova-2-lite-v1:0';
+  process.env.NOVA_LITE_INFERENCE_PROFILE_ID || defaultNovaLiteInferenceProfileId(REGION);
+
+const client = new BedrockRuntimeClient({
+  region: REGION,
+});
 
 interface AnalyzeRequest {
   image: string; // base64-encoded JPEG

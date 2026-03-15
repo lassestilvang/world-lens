@@ -20,7 +20,7 @@ import {
 import { fromCognitoIdentityPool } from '@aws-sdk/credential-provider-cognito-identity';
 
 const SONIC_MODEL_ID =
-  process.env.NEXT_PUBLIC_SONIC_INFERENCE_PROFILE_ARN || 'amazon.nova-2-sonic-v1:0';
+  process.env.NEXT_PUBLIC_SONIC_MODEL_ID || 'amazon.nova-2-sonic-v1:0';
 
 export interface VoiceSessionConfig {
   sessionId: string;

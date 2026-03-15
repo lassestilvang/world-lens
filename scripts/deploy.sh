@@ -66,8 +66,8 @@ fi
 echo "   ☁️  Bootstrapping CDK..."
 npx cdk bootstrap "aws://$ACCOUNT_ID/$REGION" --quiet 2>/dev/null || true
 
-echo "   🚀 Deploying stack..."
-npx cdk deploy --require-approval never --outputs-file cdk-outputs.json
+echo "   🚀 Deploying stacks..."
+npx cdk deploy --all --require-approval never --outputs-file cdk-outputs.json
 
 echo "   ✓ CDK infrastructure deployed!"
 echo ""
@@ -80,8 +80,6 @@ WS_URL=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLe
 SESSIONS_TABLE=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.SessionsTableName || 'WorldLensSessions')")
 IDENTITY_POOL_ID=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.CognitoIdentityPoolId || '')")
 BEDROCK_REGION=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.BedrockRegion || '')")
-SONIC_PROFILE_ARN=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensBedrockProfiles?.SonicInferenceProfileArn || '')")
-LITE_PROFILE_ARN=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensBedrockProfiles?.LiteInferenceProfileArn || '')")
 ACCESS_KEY_ID=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.DevUserAccessKeyId || '')")
 SECRET_ACCESS_KEY=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.DevUserSecretAccessKey || '')")
 
@@ -110,17 +108,15 @@ else
     echo "   ✓ Bedrock region: $BEDROCK_REGION"
 fi
 
-if [ -z "$SONIC_PROFILE_ARN" ]; then
-    echo "⚠️  Warning: Sonic inference profile ARN not found in CDK outputs"
-else
-    echo "   ✓ Sonic inference profile ARN: $SONIC_PROFILE_ARN"
-fi
-
-if [ -z "$LITE_PROFILE_ARN" ]; then
-    echo "⚠️  Warning: Lite inference profile ARN not found in CDK outputs"
-else
-    echo "   ✓ Lite inference profile ARN: $LITE_PROFILE_ARN"
-fi
+# Determine system-defined Nova 2 Lite inference profile ID based on region
+case "$REGION" in
+  eu-*) NOVA_LITE_PROFILE_ID="eu.amazon.nova-2-lite-v1:0" ;;
+  us-*) NOVA_LITE_PROFILE_ID="us.amazon.nova-2-lite-v1:0" ;;
+  ap-*) NOVA_LITE_PROFILE_ID="apac.amazon.nova-2-lite-v1:0" ;;
+  ca-*) NOVA_LITE_PROFILE_ID="ca.amazon.nova-2-lite-v1:0" ;;
+  jp-*) NOVA_LITE_PROFILE_ID="jp.amazon.nova-2-lite-v1:0" ;;
+  *) NOVA_LITE_PROFILE_ID="us.amazon.nova-2-lite-v1:0" ;;
+esac
 
 # Write .env.local for Next.js
 cat > "$PROJECT_DIR/.env.local" << EOF
@@ -131,8 +127,8 @@ AWS_SECRET_ACCESS_KEY=$SECRET_ACCESS_KEY
 NEXT_PUBLIC_AWS_REGION=$REGION
 NEXT_PUBLIC_COGNITO_IDENTITY_POOL_ID=$IDENTITY_POOL_ID
 NEXT_PUBLIC_BEDROCK_REGION=$BEDROCK_REGION
-NEXT_PUBLIC_SONIC_INFERENCE_PROFILE_ARN=$SONIC_PROFILE_ARN
-NOVA_LITE_INFERENCE_PROFILE_ARN=$LITE_PROFILE_ARN
+NEXT_PUBLIC_SONIC_MODEL_ID=amazon.nova-2-sonic-v1:0
+NOVA_LITE_INFERENCE_PROFILE_ID=$NOVA_LITE_PROFILE_ID
 SESSIONS_TABLE=$SESSIONS_TABLE
 EOF
 
@@ -160,8 +156,7 @@ echo "  WebSocket URL: $WS_URL"
 echo "  Sessions Table: $SESSIONS_TABLE"
 echo "  Cognito Identity Pool ID: $IDENTITY_POOL_ID"
 echo "  Bedrock region: $BEDROCK_REGION"
-echo "  Sonic inference profile ARN: $SONIC_PROFILE_ARN"
-echo "  Lite inference profile ARN: $LITE_PROFILE_ARN"
+echo "  Nova 2 Lite inference profile ID: $NOVA_LITE_PROFILE_ID"
 echo ""
 echo "  To run locally:  npm run dev"
 echo "  To deploy to Amplify: git push (if Amplify is connected)"

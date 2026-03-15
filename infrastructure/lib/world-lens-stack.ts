@@ -38,9 +38,9 @@ export class WorldLensStack extends cdk.Stack {
     // ─── Shared Lambda Environment ────────────────────────────────────
 
     const bedrockRegion = props.bedrockRegion;
-    const sonicModelArn = `arn:aws:bedrock:${bedrockRegion}::foundation-model/amazon.nova-2-sonic-v1:0`;
-    const liteModelArn = `arn:aws:bedrock:${bedrockRegion}::foundation-model/amazon.nova-2-lite-v1:0`;
-    const inferenceProfileArn = `arn:aws:bedrock:${bedrockRegion}:${this.account}:inference-profile/*`;
+    const sonicModelArn = 'arn:aws:bedrock:*::foundation-model/amazon.nova-2-sonic-v1:0';
+    const liteModelArn = 'arn:aws:bedrock:*::foundation-model/amazon.nova-2-lite-v1:0';
+    const inferenceProfileArn = 'arn:aws:bedrock:*::inference-profile/*';
 
     const lambdaEnvironment: Record<string, string> = {
       SESSIONS_TABLE: sessionsTable.tableName,
