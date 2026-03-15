@@ -439,6 +439,9 @@ export class VoiceSession {
   private audioContentName: string | null = null;
   private keepaliveTimer: ReturnType<typeof setInterval> | null = null;
   private lastInputAt = 0;
+  private playbackContext: AudioContext | null = null;
+  private nextPlaybackTime = 0;
+  private contentRoles = new Map<string, { role?: string; type?: string }>();
 
   constructor(config: VoiceSessionConfig) {
     this.config = config;
@@ -688,8 +691,17 @@ export class VoiceSession {
    */
   private processOutputEvent(event: Record<string, unknown>): void {
     try {
-      if (event.audioOutput) {
-        const audioData = event.audioOutput as { content?: string };
+      const payload =
+        event.event && typeof event.event === 'object'
+          ? (event.event as Record<string, unknown>)
+          : event;
+
+      if (process.env.NODE_ENV !== 'production' && (payload.audioOutput || payload.textOutput)) {
+        console.info('[VoiceSession] Output event', Object.keys(payload));
+      }
+
+      if (payload.audioOutput) {
+        const audioData = payload.audioOutput as { content?: string };
         if (audioData.content) {
           const audioBytes = base64ToUint8(audioData.content);
           const audioBuffer = new ArrayBuffer(audioBytes.byteLength);
@@ -700,16 +712,50 @@ export class VoiceSession {
         return;
       }
 
-      if (event.textOutput) {
-        const textData = event.textOutput as { content?: string };
+      if (payload.textOutput) {
+        const textData = payload.textOutput as { content?: string; contentName?: string; role?: string };
         if (textData.content) {
-          this.emit({ type: 'text', text: textData.content });
+          const role =
+            textData.role ||
+            (textData.contentName ? this.contentRoles.get(textData.contentName)?.role : undefined);
+          const trimmed = textData.content.trim();
+          if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+            return;
+          }
+          if (role === 'USER') {
+            this.emit({ type: 'transcript', text: textData.content });
+          } else {
+            this.emit({ type: 'text', text: textData.content });
+          }
         }
         return;
       }
 
-      if (event.toolUse) {
-        const toolData = event.toolUse as {
+      if (payload.contentStart) {
+        const contentData = payload.contentStart as {
+          contentName?: string;
+          role?: string;
+          type?: string;
+        };
+        if (contentData.contentName) {
+          this.contentRoles.set(contentData.contentName, {
+            role: contentData.role,
+            type: contentData.type,
+          });
+        }
+        return;
+      }
+
+      if (payload.contentEnd) {
+        const contentData = payload.contentEnd as { contentName?: string };
+        if (contentData.contentName) {
+          this.contentRoles.delete(contentData.contentName);
+        }
+        return;
+      }
+
+      if (payload.toolUse) {
+        const toolData = payload.toolUse as {
           toolUseId?: string;
           name?: string;
           input?: string;
@@ -723,7 +769,7 @@ export class VoiceSession {
         return;
       }
 
-      if (event.turnComplete || event.completionReason) {
+      if (payload.turnComplete || payload.completionReason) {
         this.emit({ type: 'turnComplete' });
         return;
       }
@@ -971,6 +1017,12 @@ export class VoiceSession {
     this.client?.destroy?.();
     this.client = null;
 
+    if (this.playbackContext) {
+      this.playbackContext.close().catch(console.error);
+      this.playbackContext = null;
+      this.nextPlaybackTime = 0;
+    }
+
     this.emit({ type: 'sessionEnded' });
   }
 
@@ -1015,7 +1067,15 @@ export class VoiceSession {
 
   private async playAudio(pcmData: ArrayBuffer): Promise<void> {
     try {
-      const ctx = new AudioContext({ sampleRate: 16000 });
+      if (!this.playbackContext) {
+        this.playbackContext = new AudioContext();
+        this.nextPlaybackTime = this.playbackContext.currentTime;
+      }
+      const ctx = this.playbackContext;
+      if (ctx.state === 'suspended') {
+        await ctx.resume().catch(() => undefined);
+      }
+
       const int16 = new Int16Array(pcmData);
       const float32 = new Float32Array(int16.length);
 
@@ -1029,9 +1089,15 @@ export class VoiceSession {
       const source = ctx.createBufferSource();
       source.buffer = audioBuffer;
       source.connect(ctx.destination);
-      source.start();
+      const startTime = Math.max(ctx.currentTime, this.nextPlaybackTime);
+      source.start(startTime);
+      this.nextPlaybackTime = startTime + audioBuffer.duration;
 
-      source.onended = () => ctx.close().catch(console.error);
+      source.onended = () => {
+        if (this.playbackContext && this.nextPlaybackTime < this.playbackContext.currentTime) {
+          this.nextPlaybackTime = this.playbackContext.currentTime;
+        }
+      };
     } catch (err) {
       console.error('[VoiceSession] Audio playback error:', err);
     }
