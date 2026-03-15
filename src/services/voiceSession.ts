@@ -300,7 +300,7 @@ export class VoiceSession {
 
     this.client = new BedrockRuntimeClient({
       region: bedrockRegion,
-      credentials,
+      credentials: credentialsProvider,
     });
 
     this.isActive = true;
