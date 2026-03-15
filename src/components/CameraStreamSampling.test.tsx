@@ -50,7 +50,7 @@ describe('CameraStream Sampling Integration', () => {
     HTMLCanvasElement.prototype.getContext = jest.fn().mockReturnValue(mockCtx);
     HTMLCanvasElement.prototype.toDataURL = jest.fn().mockReturnValue('data:image/jpeg;base64,test');
 
-    const { rerender } = render(<CameraStream onFrameCapture={mockOnFrameCapture} />);
+    render(<CameraStream onFrameCapture={mockOnFrameCapture} />);
 
     // Wait for the async setupCamera to finish
     await React.act(async () => {
