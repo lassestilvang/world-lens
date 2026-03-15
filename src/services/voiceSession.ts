@@ -242,14 +242,14 @@ function createPromptStartEvent(config: {
         },
         toolConfiguration: config.tools
           ? {
-              tools: config.tools.map((t) => ({
-                toolSpec: {
-                  name: t.toolName,
-                  description: t.description,
-                  inputSchema: { json: JSON.stringify(t.inputSchema) },
-                },
-              })),
-            }
+            tools: config.tools.map((t) => ({
+              toolSpec: {
+                name: t.toolName,
+                description: t.description,
+                inputSchema: { json: JSON.stringify(t.inputSchema) },
+              },
+            })),
+          }
           : undefined,
       },
     },
@@ -695,10 +695,6 @@ export class VoiceSession {
         event.event && typeof event.event === 'object'
           ? (event.event as Record<string, unknown>)
           : event;
-
-      if (process.env.NODE_ENV !== 'production' && (payload.audioOutput || payload.textOutput)) {
-        console.info('[VoiceSession] Output event', Object.keys(payload));
-      }
 
       if (payload.audioOutput) {
         const audioData = payload.audioOutput as { content?: string };
