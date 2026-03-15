@@ -80,7 +80,6 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
 
     let stream: MediaStream | null = null;
     let intervalId: NodeJS.Timeout | null = null;
-    let audioCtx: AudioContext | null = null;
 
     async function setupCamera() {
       try {
@@ -91,23 +90,11 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
 
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' },
-          audio: true,
+          audio: false, // Audio is handled by the VoiceSession, not the camera stream
         });
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-        }
-
-        // ─── Set up real VAD via Web Audio API ──────────────────────
-        try {
-          audioCtx = new AudioContext();
-          const audioSource = audioCtx.createMediaStreamSource(stream);
-          const analyser = audioCtx.createAnalyser();
-          analyser.fftSize = 2048;
-          audioSource.connect(analyser);
-          analyserRef.current = analyser;
-        } catch (audioErr) {
-          console.warn('Audio analyser setup failed, VAD will be disabled:', audioErr);
         }
 
         // ─── Create offscreen canvas for motion detection ──────────
@@ -139,7 +126,7 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
           }
           prevFrameRef.current = currentFrame;
 
-          // Detect speech via VAD
+          // Detect speech via VAD (only if an analyser is available)
           const isSpeaking = analyserRef.current ? detectSpeech(analyserRef.current) : false;
 
           // Use the FrameSampler to decide if we should capture
@@ -149,8 +136,8 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
           }
         }, 500);
       } catch (err) {
-        console.error('Error accessing media devices.', err);
-        setError('Unable to access camera/microphone');
+        console.error('Error accessing camera.', err);
+        setError('Unable to access camera');
       }
     }
 
@@ -162,9 +149,6 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
       }
       if (intervalId) {
         clearInterval(intervalId);
-      }
-      if (audioCtx && audioCtx.state !== 'closed') {
-        audioCtx.close().catch(console.error);
       }
     };
   }, [onFrameCapture, ref]);

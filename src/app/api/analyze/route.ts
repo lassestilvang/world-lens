@@ -132,11 +132,22 @@ export async function POST(request: NextRequest) {
     // Try to parse as JSON, fall back to raw text
     let parsed;
     try {
-      // Extract JSON from the response (it may be wrapped in markdown code blocks)
-      const jsonMatch = responseText?.match(/\{[\s\S]*\}/);
-      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { raw: responseText };
+      // Try direct parse first
+      parsed = JSON.parse(responseText || '{}');
     } catch {
-      parsed = { raw: responseText };
+      try {
+        // Strip markdown code fences (```json ... ```)
+        const stripped = responseText?.replace(/```(?:json)?\s*/g, '').replace(/```\s*/g, '').trim();
+        parsed = JSON.parse(stripped || '{}');
+      } catch {
+        try {
+          // Last resort: regex extraction of first JSON object
+          const jsonMatch = responseText?.match(/\{[\s\S]*\}/);
+          parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { raw: responseText };
+        } catch {
+          parsed = { raw: responseText };
+        }
+      }
     }
 
     return NextResponse.json(parsed);

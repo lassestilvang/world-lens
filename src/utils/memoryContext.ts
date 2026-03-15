@@ -47,12 +47,14 @@ export interface OptimizationResult {
  */
 export function optimizeMemory(memory: string[]): OptimizationResult {
   if (memory.length > 20) {
-    // Simulated summarization logic for MVP demo
-    const summary = `Looked at ${memory.length} different cereals. User goal is partially met but still searching.`;
+    // Summarize older observations, keep recent ones
+    const recent = memory.slice(-5);
+    const olderCount = memory.length - 5;
+    const summary = `[Summary] Observed ${olderCount} items previously.`;
     return {
       isSummarized: true,
       summary,
-      memory: [] // Reset recent memory after summarization
+      memory: [summary, ...recent], // Preserve summary + most recent items
     };
   }
 

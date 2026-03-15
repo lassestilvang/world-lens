@@ -52,10 +52,19 @@ export async function POST(request: NextRequest) {
     // Try to parse structured response
     let parsed;
     try {
-      const jsonMatch = responseText?.match(/\{[\s\S]*\}/);
-      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { verified_fact: responseText, source: 'Nova Lite reasoning' };
+      parsed = JSON.parse(responseText || '{}');
     } catch {
-      parsed = { verified_fact: responseText, source: 'Nova Lite reasoning' };
+      try {
+        const stripped = responseText?.replace(/```(?:json)?\s*/g, '').replace(/```\s*/g, '').trim();
+        parsed = JSON.parse(stripped || '{}');
+      } catch {
+        try {
+          const jsonMatch = responseText?.match(/\{[\s\S]*\}/);
+          parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { verified_fact: responseText, source: 'Nova Lite reasoning' };
+        } catch {
+          parsed = { verified_fact: responseText, source: 'Nova Lite reasoning' };
+        }
+      }
     }
 
     return NextResponse.json(parsed);

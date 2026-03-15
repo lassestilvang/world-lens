@@ -1,11 +1,17 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 
-// Standard DynamoDB client initialization (server-side only)
-const client = new DynamoDBClient({ region: 'us-east-1' });
-const ddbDocClient = DynamoDBDocumentClient.from(client);
+// Lazily initialized — prevents AWS SDK construction in browser context
+let _ddbDocClient: DynamoDBDocumentClient | null = null;
+function getDdbDocClient(): DynamoDBDocumentClient {
+  if (!_ddbDocClient) {
+    const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' });
+    _ddbDocClient = DynamoDBDocumentClient.from(client);
+  }
+  return _ddbDocClient;
+}
 
-const TABLE_NAME = 'WorldLensSessions';
+const TABLE_NAME = process.env.SESSIONS_TABLE || 'WorldLensSessions';
 
 // Mock storage for testing without AWS credentials
 const mockStore = new Map<string, unknown>();
@@ -44,7 +50,7 @@ export async function saveSessionMemory(sessionId: string, data: unknown): Promi
   };
 
   try {
-    await ddbDocClient.send(new PutCommand(params));
+    await getDdbDocClient().send(new PutCommand(params));
   } catch (error) {
     console.error('Error saving to DynamoDB:', error);
     throw error;
@@ -77,7 +83,7 @@ export async function getSessionMemory(sessionId: string): Promise<unknown | nul
   };
 
   try {
-    const response = await ddbDocClient.send(new GetCommand(params));
+    const response = await getDdbDocClient().send(new GetCommand(params));
     return response.Item ? response.Item.data : null;
   } catch (error) {
     console.error('Error reading from DynamoDB:', error);

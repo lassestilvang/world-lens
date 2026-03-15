@@ -9,10 +9,11 @@ import { analyzeFrame, analyzeDocument, analyzeEnvironment, SceneAnalysis, Envir
 import { evaluateProactiveSuggestion } from '../services/orchestrator';
 import { generateSpeechResponse } from '../services/novaSonic';
 import { optimizeMemory, addObservationToMemory, buildMemoryContext } from '../utils/memoryContext';
-import { playMedicationEarcon } from '../utils/audioService';
+import { playEarcon } from '../services/earconService';
 import { detectModeSwitch } from '../utils/modeSwitching';
 import { suggestModeFromScene } from '../utils/modeDetection';
 import { isImmediateHazard } from '../utils/safetyInterrupt';
+import { handleServiceError } from '../services/fallbackHandler';
 import { useVoiceSession } from '../hooks/useVoiceSession';
 
 export default function Page() {
@@ -20,7 +21,7 @@ export default function Page() {
   const [goal, setGoal] = useState<string>('');
   const [inputValue, setInputValue] = useState<string>('');
   const [memory, setMemory] = useState<string[]>([]);
-  const [lastSuggestion, setLastResponse] = useState<string>('');
+  const [lastSuggestion, setLastSuggestion] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [modeSuggestion, setModeSuggestion] = useState<AssistantMode | null>(null);
   const [showDebug, setShowDebug] = useState<boolean>(true);
@@ -38,6 +39,17 @@ export default function Page() {
 
   // Voice session hook
   const voice = useVoiceSession(sessionIdRef.current);
+
+  // Refs for state accessed inside onFrameCapture — avoids stale closures
+  // which would cause CameraStream to restart on every state change.
+  const goalRef = useRef(goal);
+  const memoryRef = useRef(memory);
+  const lastSuggestionRef = useRef(lastSuggestion);
+  const modeRef = useRef(mode);
+  useEffect(() => { goalRef.current = goal; }, [goal]);
+  useEffect(() => { memoryRef.current = memory; }, [memory]);
+  useEffect(() => { lastSuggestionRef.current = lastSuggestion; }, [lastSuggestion]);
+  useEffect(() => { modeRef.current = mode; }, [mode]);
 
   const handleSetGoal = () => {
     if (inputValue.trim()) {
@@ -58,15 +70,21 @@ export default function Page() {
   };
 
   const onFrameCapture = useCallback(async (frameData: string) => {
+    // Read current state from refs to avoid re-creating this callback
+    const currentMode = modeRef.current;
+    const currentGoal = goalRef.current;
+    const currentMemory = memoryRef.current;
+    const currentLastSuggestion = lastSuggestionRef.current;
+
     try {
       setIsProcessing(true);
       setAnalysisError(null);
       const startTime = Date.now();
 
       let analysis;
-      if (mode === 'document') {
+      if (currentMode === 'document') {
         analysis = await analyzeDocument(frameData);
-      } else if (mode === 'environment') {
+      } else if (currentMode === 'environment') {
         analysis = await analyzeEnvironment(frameData);
       } else {
         analysis = await analyzeFrame(frameData);
@@ -75,25 +93,29 @@ export default function Page() {
       setLatencyMs(Date.now() - startTime);
       setLastAnalysis(analysis as unknown as Record<string, unknown>);
 
-      const objects = 'safetyObjects' in analysis ? analysis.safetyObjects : analysis.objects;
-      const context = 'sceneContext' in analysis ? analysis.sceneContext : analysis.environment;
+      const objects = 'safetyObjects' in analysis
+        ? (analysis as EnvironmentAnalysis).safetyObjects
+        : 'objects' in analysis ? (analysis as SceneAnalysis).objects : [];
+      const context = 'sceneContext' in analysis
+        ? (analysis as EnvironmentAnalysis).sceneContext
+        : 'environment' in analysis ? (analysis as SceneAnalysis).environment : '';
 
       // 1. Check for Immediate Hazards (Safety First)
       if (isImmediateHazard(objects)) {
         const hazard = objects.find((o: string) => o.includes('red') || o.includes('obstacle'));
-        setLastResponse(`Hazard Detected: ${hazard}`);
-        playMedicationEarcon('warning');
+        setLastSuggestion(`Hazard Detected: ${hazard}`);
+        playEarcon('chime');
       }
 
       // 2. Suggest Mode Improvements
       const suggested = suggestModeFromScene({
         objects,
         environment: context || '',
-      }, mode);
+      }, currentMode);
       setModeSuggestion(suggested);
 
       // 3. Update Memory
-      let updatedMemory = [...memory];
+      let updatedMemory = [...currentMemory];
       objects.forEach((obj: string) => {
         if (!updatedMemory.includes(obj)) {
           updatedMemory = addObservationToMemory(updatedMemory, obj, 100);
@@ -107,17 +129,17 @@ export default function Page() {
       setMemory(updatedMemory);
 
       // 4. Proactive Advice
-      if (goal || mode === 'environment') {
+      if (currentGoal || currentMode === 'environment') {
         const suggestionResult = await evaluateProactiveSuggestion({
           environment: context || 'unknown',
           objects_seen: updatedMemory,
-          user_goal: goal || 'stay safe',
+          user_goal: currentGoal || 'stay safe',
         }, analysis as SceneAnalysis);
 
         if (suggestionResult.shouldSuggest && suggestionResult.suggestionPrompt) {
-          if (suggestionResult.suggestionPrompt !== lastSuggestion) {
-            setLastResponse(suggestionResult.suggestionPrompt);
-            playMedicationEarcon('success');
+          if (suggestionResult.suggestionPrompt !== currentLastSuggestion) {
+            setLastSuggestion(suggestionResult.suggestionPrompt);
+            playEarcon('chime');
             await generateSpeechResponse(
               suggestionResult.suggestionPrompt,
               buildMemoryContext(updatedMemory)
@@ -126,13 +148,13 @@ export default function Page() {
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Analysis failed';
-      console.error('Error in orchestration loop:', message);
-      setAnalysisError(message);
+      const fallback = handleServiceError('vision', err);
+      console.error('Error in orchestration loop:', fallback.userMessage);
+      setAnalysisError(fallback.userMessage);
     } finally {
       setIsProcessing(false);
     }
-  }, [goal, memory, lastSuggestion, mode]);
+  }, []); // Stable reference — reads state via refs
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-zinc-950 text-white relative overflow-hidden safe-area-padding">

@@ -33,7 +33,11 @@ interface ClientMessage {
   memoryContext?: string;
 }
 
-// Active Sonic sessions keyed by connectionId
+// ⚠️  WARNING: Lambda functions are stateless across invocations.
+// This in-memory Map works when a single Lambda instance handles all messages
+// for a given connection (warm invocation), but will be lost on cold starts.
+// For production, move to a long-lived compute (Fargate) or externalize session state.
+// For the hackathon demo, provisioned concurrency = 1 is a pragmatic workaround.
 const activeSessions = new Map<string, SonicSession>();
 
 /**
