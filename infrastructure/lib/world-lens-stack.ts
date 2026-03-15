@@ -7,12 +7,15 @@ import * as apigwv2Integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations'
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
-import * as bedrock from 'aws-cdk-lib/aws-bedrock';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
+interface WorldLensStackProps extends cdk.StackProps {
+  bedrockRegion: string;
+}
+
 export class WorldLensStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: WorldLensStackProps) {
     super(scope, id, props);
 
     // ─── DynamoDB Tables ──────────────────────────────────────────────
@@ -34,36 +37,14 @@ export class WorldLensStack extends cdk.Stack {
 
     // ─── Shared Lambda Environment ────────────────────────────────────
 
-    const bedrockRegion = 'us-east-1';
+    const bedrockRegion = props.bedrockRegion;
     const sonicModelArn = `arn:aws:bedrock:${bedrockRegion}::foundation-model/amazon.nova-2-sonic-v1:0`;
     const liteModelArn = `arn:aws:bedrock:${bedrockRegion}::foundation-model/amazon.nova-2-lite-v1:0`;
-
-    // ─── Application Inference Profiles ──────────────────────────────
-
-    const sonicInferenceProfile = new bedrock.CfnApplicationInferenceProfile(
-      this,
-      'WorldLensSonicInferenceProfile',
-      {
-        inferenceProfileName: 'worldlens-nova-2-sonic',
-        description: 'WorldLens inference profile for Nova 2 Sonic',
-        modelSource: { copyFrom: sonicModelArn },
-      }
-    );
-
-    const liteInferenceProfile = new bedrock.CfnApplicationInferenceProfile(
-      this,
-      'WorldLensLiteInferenceProfile',
-      {
-        inferenceProfileName: 'worldlens-nova-2-lite',
-        description: 'WorldLens inference profile for Nova 2 Lite',
-        modelSource: { copyFrom: liteModelArn },
-      }
-    );
+    const inferenceProfileArn = `arn:aws:bedrock:${bedrockRegion}:${this.account}:inference-profile/*`;
 
     const lambdaEnvironment: Record<string, string> = {
       SESSIONS_TABLE: sessionsTable.tableName,
       CONNECTIONS_TABLE: connectionsTable.tableName,
-      SONIC_INFERENCE_PROFILE_ARN: sonicInferenceProfile.attrInferenceProfileArn,
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
     };
 
@@ -79,8 +60,7 @@ export class WorldLensStack extends cdk.Stack {
       resources: [
         sonicModelArn,
         liteModelArn,
-        sonicInferenceProfile.attrInferenceProfileArn,
-        liteInferenceProfile.attrInferenceProfileArn,
+        inferenceProfileArn,
       ],
     });
 
@@ -291,18 +271,6 @@ export class WorldLensStack extends cdk.Stack {
       value: bedrockRegion,
       description: 'Bedrock region for Nova Sonic',
       exportName: 'WorldLensBedrockRegion',
-    });
-
-    new cdk.CfnOutput(this, 'SonicInferenceProfileArn', {
-      value: sonicInferenceProfile.attrInferenceProfileArn,
-      description: 'Inference profile ARN for Nova 2 Sonic',
-      exportName: 'WorldLensSonicInferenceProfileArn',
-    });
-
-    new cdk.CfnOutput(this, 'LiteInferenceProfileArn', {
-      value: liteInferenceProfile.attrInferenceProfileArn,
-      description: 'Inference profile ARN for Nova 2 Lite',
-      exportName: 'WorldLensLiteInferenceProfileArn',
     });
 
     new cdk.CfnOutput(this, 'DevUserAccessKeyId', {

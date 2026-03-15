@@ -80,8 +80,8 @@ WS_URL=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLe
 SESSIONS_TABLE=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.SessionsTableName || 'WorldLensSessions')")
 IDENTITY_POOL_ID=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.CognitoIdentityPoolId || '')")
 BEDROCK_REGION=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.BedrockRegion || '')")
-SONIC_PROFILE_ARN=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.SonicInferenceProfileArn || '')")
-LITE_PROFILE_ARN=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.LiteInferenceProfileArn || '')")
+SONIC_PROFILE_ARN=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensBedrockProfiles?.SonicInferenceProfileArn || '')")
+LITE_PROFILE_ARN=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensBedrockProfiles?.LiteInferenceProfileArn || '')")
 ACCESS_KEY_ID=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.DevUserAccessKeyId || '')")
 SECRET_ACCESS_KEY=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.DevUserSecretAccessKey || '')")
 
