@@ -14,8 +14,10 @@ import { isImmediateHazard } from '../utils/safetyInterrupt';
 import { handleServiceError } from '../services/fallbackHandler';
 import { useVoiceSession } from '../hooks/useVoiceSession';
 import { findGoalObjectMatch } from '../utils/goalMatching';
+import { inferGoalFromQuestion } from '../utils/goalInference';
 
-const PROACTIVE_OBSERVATION_COOLDOWN_MS = 8_000;
+const PROACTIVE_OBSERVATION_COOLDOWN_MS = 3_000;
+const OBJECT_REAPPEARANCE_MS = 1_500;
 
 export default function Page() {
   const [mode, setMode] = useState<AssistantMode>('grocery');
@@ -32,6 +34,9 @@ export default function Page() {
   const handledToolCalls = useRef<Set<string>>(new Set());
   const greetingSentRef = useRef<boolean>(false);
   const lastSpokenObservationRef = useRef<{ text: string; timestamp: number }>({ text: '', timestamp: 0 });
+  const inferredGoalRef = useRef<string>('');
+  const pendingObservationRef = useRef<string | null>(null);
+  const objectPresenceRef = useRef<{ object: string; lastSeenAt: number }>({ object: '', lastSeenAt: 0 });
 
   // Session ID — stable across the session lifecycle
   const sessionIdRef = useRef<string>('');
@@ -53,14 +58,38 @@ export default function Page() {
   const memoryRef = useRef(memory);
   const lastSuggestionRef = useRef(lastSuggestion);
   const modeRef = useRef(mode);
-  useEffect(() => { goalRef.current = goal; }, [goal]);
+  const voiceConnectedRef = useRef(false);
+  useEffect(() => {
+    goalRef.current = goal;
+    if (goal.trim()) {
+      inferredGoalRef.current = goal.trim();
+    }
+  }, [goal]);
   useEffect(() => { memoryRef.current = memory; }, [memory]);
   useEffect(() => { lastSuggestionRef.current = lastSuggestion; }, [lastSuggestion]);
   useEffect(() => { modeRef.current = mode; }, [mode]);
+  useEffect(() => {
+    voiceConnectedRef.current = voice.isConnected;
+    if (!voice.isConnected) {
+      return;
+    }
+
+    const pendingObservation = pendingObservationRef.current;
+    if (!pendingObservation) {
+      return;
+    }
+
+    pendingObservationRef.current = null;
+    lastSpokenObservationRef.current = { text: pendingObservation, timestamp: Date.now() };
+    voice.interrupt();
+    voice.sendText(`${pendingObservation} Please tell the user this immediately in one short sentence.`);
+  }, [voice.isConnected, voice.interrupt, voice.sendText]);
 
   const handleSetGoal = () => {
-    if (inputValue.trim()) {
-      setGoal(inputValue.trim());
+    const trimmedGoal = inputValue.trim();
+    if (trimmedGoal) {
+      inferredGoalRef.current = trimmedGoal;
+      setGoal(trimmedGoal);
       setInputValue('');
     }
   };
@@ -114,22 +143,40 @@ export default function Page() {
       };
 
       // Proactive Sight: If AI sees something related to the goal
-      const goalText = currentGoal.toLowerCase().trim();
+      const goalText = (currentGoal || inferredGoalRef.current).toLowerCase().trim();
       if (goalText) {
         const matchedObject = findGoalObjectMatch(goalText, objects);
-        if (matchedObject) {
-          const observation = `[System Observation] I can see ${matchedObject} in frame right now.`;
-          const now = Date.now();
-          const { text: previousObservation, timestamp: previousTimestamp } = lastSpokenObservationRef.current;
-          const isDuplicateWithinCooldown =
-            previousObservation === observation && now - previousTimestamp < PROACTIVE_OBSERVATION_COOLDOWN_MS;
+        const now = Date.now();
 
-          if (!isDuplicateWithinCooldown) {
-            lastSpokenObservationRef.current = { text: observation, timestamp: now };
-            voice.interrupt();
-            voice.sendText(observation);
-            console.info('[Page] Proactive Sight Observation sent:', observation);
+        if (matchedObject) {
+          const recentlySeenSameObject =
+            objectPresenceRef.current.object === matchedObject
+            && now - objectPresenceRef.current.lastSeenAt < OBJECT_REAPPEARANCE_MS;
+          objectPresenceRef.current = { object: matchedObject, lastSeenAt: now };
+
+          if (!recentlySeenSameObject) {
+            const observation = `[System Observation] I can see ${matchedObject} in frame right now.`;
+            const { text: previousObservation, timestamp: previousTimestamp } = lastSpokenObservationRef.current;
+            const isDuplicateWithinCooldown =
+              previousObservation === observation && now - previousTimestamp < PROACTIVE_OBSERVATION_COOLDOWN_MS;
+
+            if (!isDuplicateWithinCooldown) {
+              setLastSuggestion(`Spotted ${matchedObject} in frame.`);
+              playEarcon('chime');
+
+              if (voiceConnectedRef.current) {
+                lastSpokenObservationRef.current = { text: observation, timestamp: now };
+                voice.interrupt();
+                voice.sendText(`${observation} Please tell the user this immediately in one short sentence.`);
+              } else {
+                pendingObservationRef.current = observation;
+              }
+
+              console.info('[Page] Proactive Sight Observation queued:', observation);
+            }
           }
+        } else if (now - objectPresenceRef.current.lastSeenAt > OBJECT_REAPPEARANCE_MS) {
+          objectPresenceRef.current = { object: '', lastSeenAt: 0 };
         }
       }
 
@@ -163,19 +210,24 @@ export default function Page() {
       setMemory(updatedMemory);
 
       // 4. Proactive Advice
-      if (currentGoal || currentMode === 'environment') {
+      const effectiveGoal = currentGoal || inferredGoalRef.current;
+      if (effectiveGoal || currentMode === 'environment') {
         const suggestionResult = await evaluateProactiveSuggestion({
           environment: sceneAnalysis.environment,
           objects_seen: currentMemory,
-          user_goal: currentGoal || 'stay safe',
+          user_goal: effectiveGoal || 'stay safe',
         }, sceneAnalysis);
 
         if (suggestionResult.shouldSuggest && suggestionResult.suggestionPrompt) {
           if (suggestionResult.suggestionPrompt !== currentLastSuggestion) {
             setLastSuggestion(suggestionResult.suggestionPrompt);
             playEarcon('chime');
-            voice.interrupt();
-            voice.sendText(`[System Observation] ${suggestionResult.suggestionPrompt}`);
+            if (voiceConnectedRef.current) {
+              voice.interrupt();
+              voice.sendText(
+                `[System Observation] ${suggestionResult.suggestionPrompt} Please tell the user this immediately in one concise sentence.`
+              );
+            }
           }
         }
       }
@@ -199,6 +251,15 @@ export default function Page() {
       console.log(`[Page] Handling Tool Call: ${name}`, { input, toolUseId });
 
       if (name === 'analyze_frame') {
+        const askedQuestion = typeof input.question === 'string' ? input.question : '';
+        const inferredGoal = inferGoalFromQuestion(askedQuestion);
+        if (inferredGoal) {
+          inferredGoalRef.current = inferredGoal;
+          if (!goalRef.current.trim()) {
+            setGoal(inferredGoal);
+          }
+        }
+
         // Return the latest analysis context
         const context = lastAnalysis
           ? JSON.stringify(lastAnalysis)
@@ -222,6 +283,7 @@ export default function Page() {
         }
 
         if (newGoal) {
+          inferredGoalRef.current = newGoal;
           setGoal(newGoal);
         }
 

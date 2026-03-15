@@ -450,7 +450,10 @@ export class VoiceSession {
   private lastInputAt = 0;
   private playbackContext: AudioContext | null = null;
   private nextPlaybackTime = 0;
-  private contentRoles = new Map<string, { role?: string; type?: string }>();
+  private contentRoles = new Map<string, { role?: string; type?: string; completionId?: string }>();
+  private suppressedAssistantContentIds = new Set<string>();
+  private interruptedCompletionIds = new Set<string>();
+  private lastCompletionId: string | null = null;
   private analyzer: AnalyserNode | null = null;
   private activeSources: Set<AudioBufferSourceNode> = new Set();
 
@@ -474,6 +477,51 @@ export class VoiceSession {
       } catch (err) {
         console.error('[VoiceSession] Callback error:', err);
       }
+    }
+  }
+
+  private resolveContentId(eventData: { contentName?: string; contentId?: string }): string | undefined {
+    return eventData.contentName || eventData.contentId;
+  }
+
+  private shouldSuppressAssistantOutput(completionId?: string, contentId?: string): boolean {
+    if (completionId && this.interruptedCompletionIds.has(completionId)) {
+      return true;
+    }
+    if (contentId && this.suppressedAssistantContentIds.has(contentId)) {
+      return true;
+    }
+    return false;
+  }
+
+  private markActiveAssistantOutputAsInterrupted(): void {
+    for (const [contentId, content] of this.contentRoles.entries()) {
+      if (content.role === 'ASSISTANT') {
+        this.suppressedAssistantContentIds.add(contentId);
+        if (content.completionId) {
+          this.interruptedCompletionIds.add(content.completionId);
+        }
+      }
+    }
+
+    if (this.lastCompletionId) {
+      this.interruptedCompletionIds.add(this.lastCompletionId);
+    }
+  }
+
+  private stopPlayback(): void {
+    this.activeSources.forEach((source) => {
+      try {
+        source.stop();
+      } catch {
+        // Source might have already ended or not started.
+      }
+      source.disconnect();
+    });
+    this.activeSources.clear();
+
+    if (this.playbackContext) {
+      this.nextPlaybackTime = this.playbackContext.currentTime;
     }
   }
 
@@ -700,15 +748,32 @@ export class VoiceSession {
   /**
    * Handle incoming events from the Bedrock stream.
    */
-  private processOutputEvent(event: any): void {
+  private processOutputEvent(event: Record<string, unknown>): void {
     try {
       const payload =
         event.event && typeof event.event === 'object'
           ? (event.event as Record<string, unknown>)
           : event;
 
+      if (payload.completionStart) {
+        const completionData = payload.completionStart as { completionId?: string };
+        if (completionData.completionId) {
+          this.lastCompletionId = completionData.completionId;
+        }
+        return;
+      }
+
       if (payload.audioOutput) {
-        const audioData = payload.audioOutput as { content?: string };
+        const audioData = payload.audioOutput as {
+          content?: string;
+          contentName?: string;
+          contentId?: string;
+          completionId?: string;
+        };
+        const contentId = this.resolveContentId(audioData);
+        if (this.shouldSuppressAssistantOutput(audioData.completionId, contentId)) {
+          return;
+        }
         if (audioData.content) {
           const audioBytes = base64ToUint8(audioData.content);
           const audioBuffer = new ArrayBuffer(audioBytes.byteLength);
@@ -720,11 +785,21 @@ export class VoiceSession {
       }
 
       if (payload.textOutput) {
-        const textData = payload.textOutput as { content?: string; contentName?: string; role?: string };
+        const textData = payload.textOutput as {
+          content?: string;
+          contentName?: string;
+          contentId?: string;
+          completionId?: string;
+          role?: string;
+        };
+        const contentId = this.resolveContentId(textData);
+        if (this.shouldSuppressAssistantOutput(textData.completionId, contentId)) {
+          return;
+        }
         if (textData.content) {
           const role =
             textData.role ||
-            (textData.contentName ? this.contentRoles.get(textData.contentName)?.role : undefined);
+            (contentId ? this.contentRoles.get(contentId)?.role : undefined);
           const trimmed = textData.content.trim();
           if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
             return;
@@ -741,22 +816,37 @@ export class VoiceSession {
       if (payload.contentStart) {
         const contentData = payload.contentStart as {
           contentName?: string;
+          contentId?: string;
+          completionId?: string;
           role?: string;
           type?: string;
         };
-        if (contentData.contentName) {
-          this.contentRoles.set(contentData.contentName, {
+        const contentId = this.resolveContentId(contentData);
+        if (contentId) {
+          this.contentRoles.set(contentId, {
             role: contentData.role,
             type: contentData.type,
+            completionId: contentData.completionId,
           });
         }
         return;
       }
 
       if (payload.contentEnd) {
-        const contentData = payload.contentEnd as { contentName?: string };
-        if (contentData.contentName) {
-          this.contentRoles.delete(contentData.contentName);
+        const contentData = payload.contentEnd as {
+          contentName?: string;
+          contentId?: string;
+          completionId?: string;
+          stopReason?: string;
+        };
+        const contentId = this.resolveContentId(contentData);
+        if (contentId) {
+          this.contentRoles.delete(contentId);
+          this.suppressedAssistantContentIds.delete(contentId);
+        }
+
+        if (contentData.completionId && contentData.stopReason === 'INTERRUPTED') {
+          this.interruptedCompletionIds.delete(contentData.completionId);
         }
         return;
       }
@@ -767,19 +857,21 @@ export class VoiceSession {
           name?: string;
           toolName?: string;
           input?: string | Record<string, unknown>;
+          content?: string | Record<string, unknown>;
         };
         const name = toolData.name || toolData.toolName;
         console.info('[VoiceSession] Tool Use received:', name, toolData.toolUseId, toolData);
         
         let parsedInput = {};
-        if (typeof toolData.input === 'string') {
+        const rawInput = toolData.input ?? toolData.content;
+        if (typeof rawInput === 'string') {
           try {
-            parsedInput = JSON.parse(toolData.input);
+            parsedInput = JSON.parse(rawInput);
           } catch {
-            parsedInput = { raw: toolData.input };
+            parsedInput = { raw: rawInput };
           }
-        } else if (typeof toolData.input === 'object' && toolData.input !== null) {
-          parsedInput = toolData.input;
+        } else if (typeof rawInput === 'object' && rawInput !== null) {
+          parsedInput = rawInput;
         }
 
         this.emit({
@@ -788,6 +880,27 @@ export class VoiceSession {
           toolName: name || 'unknown',
           toolInput: parsedInput as Record<string, unknown>,
         });
+        return;
+      }
+
+      if (payload.completionEnd) {
+        const completionData = payload.completionEnd as {
+          completionId?: string;
+          stopReason?: string;
+        };
+
+        if (completionData.completionId) {
+          this.interruptedCompletionIds.delete(completionData.completionId);
+          if (this.lastCompletionId === completionData.completionId) {
+            this.lastCompletionId = null;
+          }
+        }
+
+        if (completionData.stopReason === 'INTERRUPTED') {
+          this.stopPlayback();
+        }
+
+        this.emit({ type: 'turnComplete' });
         return;
       }
 
@@ -1020,22 +1133,9 @@ export class VoiceSession {
    */
   interrupt(): void {
     console.info('[VoiceSession] Interrupting playback...');
-    
-    // Stop all currently playing audio sources
-    this.activeSources.forEach((source) => {
-      try {
-        source.stop();
-      } catch (err) {
-        // Source might have already ended or not started
-      }
-      source.disconnect();
-    });
-    this.activeSources.clear();
 
-    // Reset playback timeline
-    if (this.playbackContext) {
-      this.nextPlaybackTime = this.playbackContext.currentTime;
-    }
+    this.markActiveAssistantOutputAsInterrupted();
+    this.stopPlayback();
     
     this.emit({ type: 'text', text: '[Interrupted]' });
   }
@@ -1067,6 +1167,10 @@ export class VoiceSession {
 
     this.isActive = false;
     this.sessionStarted = false;
+    this.contentRoles.clear();
+    this.suppressedAssistantContentIds.clear();
+    this.interruptedCompletionIds.clear();
+    this.lastCompletionId = null;
 
     if (this.streamTask) {
       await this.streamTask.catch(() => undefined);
