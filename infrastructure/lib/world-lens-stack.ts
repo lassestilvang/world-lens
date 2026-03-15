@@ -62,6 +62,7 @@ export class WorldLensStack extends cdk.Stack {
       environment: lambdaEnvironment,
       logRetention: logs.RetentionDays.ONE_WEEK,
       bundling: {
+        forceDockerBundling: false,
         minify: true,
         sourceMap: true,
         target: 'node22',
@@ -79,6 +80,7 @@ export class WorldLensStack extends cdk.Stack {
       environment: lambdaEnvironment,
       logRetention: logs.RetentionDays.ONE_WEEK,
       bundling: {
+        forceDockerBundling: false,
         minify: true,
         sourceMap: true,
         target: 'node22',
@@ -96,6 +98,7 @@ export class WorldLensStack extends cdk.Stack {
       environment: lambdaEnvironment,
       logRetention: logs.RetentionDays.ONE_WEEK,
       bundling: {
+        forceDockerBundling: false,
         minify: true,
         sourceMap: true,
         target: 'node22',

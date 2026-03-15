@@ -54,7 +54,13 @@ cd "$INFRA_DIR"
 
 if [ ! -d "node_modules" ]; then
     echo "   📦 Installing CDK dependencies..."
-    npm ci --silent
+    npm install --silent
+fi
+
+# Ensure esbuild is installed locally for Docker-less bundling
+if ! npm list esbuild --depth=0 &> /dev/null; then
+    echo "   📦 Installing esbuild for local bundling..."
+    npm install --save-dev esbuild@0.21.5 --silent
 fi
 
 echo "   ☁️  Bootstrapping CDK..."

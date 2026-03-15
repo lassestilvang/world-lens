@@ -3,7 +3,7 @@ import {
   InvokeModelWithBidirectionalStreamCommand,
 } from '@aws-sdk/client-bedrock-runtime';
 
-const client = new BedrockRuntimeClient({ region: process.env.AWS_REGION || 'us-east-1' });
+const client = new BedrockRuntimeClient({ region: 'us-east-1' });
 
 const SONIC_MODEL_ID = 'amazon.nova-sonic-v1:0';
 
