@@ -4,6 +4,7 @@ frontend:
     preBuild:
       commands:
         - npm ci
+        - env | grep -E 'WORLDLENS_|NEXT_PUBLIC_|SESSIONS_TABLE|NOVA_LITE' > .env.production
     build:
       commands:
         - npm run build
