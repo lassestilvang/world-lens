@@ -191,6 +191,7 @@ export async function POST(request: NextRequest) {
         {
           error: 'AWS credentials are missing or expired. Please reauthenticate.',
           code: 'CREDENTIALS_ERROR',
+          debug: { name: errorName, message: errorMessage },
         },
         { status: 401 }
       );

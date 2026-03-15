@@ -97,6 +97,7 @@ export async function POST(request: NextRequest) {
       source: null,
       fallback: true,
       message: 'External verification could not be completed. Answer is based only on visible text.',
+      debug: error instanceof Error ? { name: error.name, message: error.message } : error,
     });
   }
 }
