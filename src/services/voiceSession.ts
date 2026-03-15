@@ -17,7 +17,7 @@ import {
   type InvokeModelWithBidirectionalStreamInput,
   type InvokeModelWithBidirectionalStreamOutput,
 } from '@aws-sdk/client-bedrock-runtime';
-import { fromCognitoIdentityPool } from '@aws-sdk/credential-provider-cognito-identity';
+import { fromCognitoIdentityPool } from '@aws-sdk/credential-providers';
 
 const SONIC_MODEL_ID =
   process.env.NEXT_PUBLIC_SONIC_MODEL_ID || 'amazon.nova-2-sonic-v1:0';
@@ -264,10 +264,11 @@ export class VoiceSession {
     const identityRegion =
       this.config.identityRegion || process.env.NEXT_PUBLIC_AWS_REGION || bedrockRegion;
 
-    const credentials = fromCognitoIdentityPool({
+    const credentialsProvider = fromCognitoIdentityPool({
       clientConfig: { region: identityRegion },
       identityPoolId,
     });
+    const credentials = await credentialsProvider();
 
     this.client = new BedrockRuntimeClient({
       region: bedrockRegion,
