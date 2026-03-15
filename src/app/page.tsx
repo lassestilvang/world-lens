@@ -100,10 +100,11 @@ export default function Page() {
       setLastAnalysis(analysis as unknown as Record<string, unknown>);
 
       // Proactive Sight: If AI sees something related to the goal
-      const goalText = goalRef.current.toLowerCase();
+      const goalText = goalRef.current.toLowerCase().trim();
       if (goalText) {
         // @ts-ignore - analysis might be EnvironmentAnalysis or SceneAnalysis
-        const seenObjects = (analysis.objects || analysis.safetyObjects || []) as string[];
+        const seenObjects = ((analysis.objects || analysis.safetyObjects || []) as string[]);
+        console.log('[Page] Proactive logic check:', { goalText, seenObjects });
         const matches = seenObjects.filter(o => 
           o.toLowerCase().includes(goalText) || goalText.includes(o.toLowerCase())
         );
@@ -224,6 +225,7 @@ export default function Page() {
 
   // Handle Initial Greeting
   useEffect(() => {
+    console.log('[Page] Greeting Effect check:', { isGrounded: voice.isGrounded, isConnected: voice.isConnected, greetingSent: greetingSentRef.current });
     if (voice.isGrounded && !greetingSentRef.current) {
       greetingSentRef.current = true;
       const currentGoal = goalRef.current;

@@ -938,6 +938,7 @@ export class VoiceSession {
     }
 
     const contentName = createId('text');
+    console.info(`[VoiceSession] Sending text: "${text}"`);
     this.inputQueue.push(
       this.encodeInput(
         createContentStartEvent({
