@@ -99,6 +99,24 @@ export default function Page() {
       setLatencyMs(Date.now() - startTime);
       setLastAnalysis(analysis as unknown as Record<string, unknown>);
 
+      // Proactive Sight: If AI sees something related to the goal
+      const goalText = goalRef.current.toLowerCase();
+      if (goalText) {
+        // @ts-ignore - analysis might be EnvironmentAnalysis or SceneAnalysis
+        const seenObjects = (analysis.objects || analysis.safetyObjects || []) as string[];
+        const matches = seenObjects.filter(o => 
+          o.toLowerCase().includes(goalText) || goalText.includes(o.toLowerCase())
+        );
+        if (matches.length > 0) {
+           const observation = `[System Observation] I see the ${matches[0]} in view now!`;
+           if (lastSpokenObservationRef.current !== observation) {
+              lastSpokenObservationRef.current = observation;
+              voice.sendText(observation);
+              console.info('[Page] Proactive Sight Observation sent:', observation);
+           }
+        }
+      }
+
       const objects = 'safetyObjects' in analysis
         ? (analysis as EnvironmentAnalysis).safetyObjects
         : 'objects' in analysis ? (analysis as SceneAnalysis).objects : [];
