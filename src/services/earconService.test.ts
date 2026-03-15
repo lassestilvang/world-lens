@@ -1,9 +1,35 @@
 import { playEarcon, resetSharedContext } from './earconService';
 
 describe('EarconService', () => {
-  let mockAudioContext: any;
-  let mockOscillator: any;
-  let mockGain: any;
+  type MockOscillator = {
+    connect: jest.Mock;
+    frequency: { setValueAtTime: jest.Mock };
+    start: jest.Mock;
+    stop: jest.Mock;
+    type?: OscillatorType;
+  };
+
+  type MockGain = {
+    connect: jest.Mock;
+    gain: {
+      setValueAtTime: jest.Mock;
+      exponentialRampToValueAtTime: jest.Mock;
+      linearRampToValueAtTime: jest.Mock;
+    };
+  };
+
+  type MockAudioContext = {
+    createOscillator: jest.Mock<MockOscillator, []>;
+    createGain: jest.Mock<MockGain, []>;
+    destination: object;
+    currentTime: number;
+  };
+
+  type AudioWindow = Window & { AudioContext?: typeof AudioContext };
+
+  let mockAudioContext: MockAudioContext;
+  let mockOscillator: MockOscillator;
+  let mockGain: MockGain;
 
   beforeEach(() => {
     resetSharedContext();
@@ -30,12 +56,14 @@ describe('EarconService', () => {
       currentTime: 100,
     };
 
-    (window as any).AudioContext = jest.fn(() => mockAudioContext);
+    const windowWithAudio = window as AudioWindow;
+    windowWithAudio.AudioContext = jest.fn(() => mockAudioContext) as unknown as typeof AudioContext;
   });
 
   afterEach(() => {
     jest.resetAllMocks();
-    delete (window as any).AudioContext;
+    const windowWithAudio = window as AudioWindow;
+    delete windowWithAudio.AudioContext;
   });
 
   it('plays a chime for proactive observation', () => {
@@ -60,7 +88,8 @@ describe('EarconService', () => {
   });
 
   it('does nothing gracefully if AudioContext is not supported', () => {
-    delete (window as any).AudioContext;
+    const windowWithAudio = window as AudioWindow;
+    delete windowWithAudio.AudioContext;
     expect(() => playEarcon('chime')).not.toThrow();
   });
 });

@@ -52,7 +52,7 @@ export async function verifyMedicationInfo(ocrData: MedicationInfo): Promise<Ver
       isVerified: true,
       groundedData
     };
-  } catch (error) {
+  } catch {
     return {
       isVerified: false,
       warning: 'External verification could not be completed. Please use with extreme caution and verify the physical label again.'

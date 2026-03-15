@@ -1,6 +1,6 @@
 import { APIGatewayProxyResultV2 } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
 import {
   ApiGatewayManagementApiClient,
   PostToConnectionCommand,
@@ -8,7 +8,6 @@ import {
 import { SonicSession, SonicSessionConfig, SonicResponseEvent } from './shared/sonic-session';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const CONNECTIONS_TABLE = process.env.CONNECTIONS_TABLE!;
 const SESSIONS_TABLE = process.env.SESSIONS_TABLE!;
 const CALLBACK_URL = process.env.WEBSOCKET_CALLBACK_URL!;
 

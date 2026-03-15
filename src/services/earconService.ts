@@ -14,7 +14,9 @@ export function playEarcon(type: EarconType): void {
 
   try {
     if (!sharedContext) {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AudioContextClass) return;
       sharedContext = new AudioContextClass();
     }

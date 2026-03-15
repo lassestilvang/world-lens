@@ -12,7 +12,7 @@ describe('CameraStream Frame Capture', () => {
     mockToDataURL = jest.fn().mockReturnValue('data:image/jpeg;base64,mock-frame');
 
     // Mock Canvas context
-    const mockContext = {
+    const mockContext: Partial<CanvasRenderingContext2D> = {
       drawImage: mockDrawImage,
     };
 
@@ -25,7 +25,7 @@ describe('CameraStream Frame Capture', () => {
     };
 
     jest.spyOn(document, 'createElement').mockImplementation((tagName) => {
-      if (tagName === 'canvas') return mockCanvas as any;
+      if (tagName === 'canvas') return mockCanvas as unknown as HTMLCanvasElement;
       return originalCreateElement(tagName);
     });
 

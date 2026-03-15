@@ -10,7 +10,6 @@ import { evaluateProactiveSuggestion } from '../services/orchestrator';
 import { generateSpeechResponse } from '../services/novaSonic';
 import { optimizeMemory, addObservationToMemory, buildMemoryContext } from '../utils/memoryContext';
 import { playEarcon } from '../services/earconService';
-import { detectModeSwitch } from '../utils/modeSwitching';
 import { suggestModeFromScene } from '../utils/modeDetection';
 import { isImmediateHazard } from '../utils/safetyInterrupt';
 import { handleServiceError } from '../services/fallbackHandler';
@@ -181,7 +180,7 @@ export default function Page() {
           {voice.transcript && (
             <div className="absolute top-14 left-4 right-4 bg-zinc-950/80 backdrop-blur p-3 rounded-xl border border-zinc-700 animate-in fade-in">
               <p className="text-[10px] font-black uppercase tracking-widest mb-1 text-zinc-500">Transcript</p>
-              <p className="text-sm text-zinc-200 italic">"{voice.transcript}"</p>
+              <p className="text-sm text-zinc-200 italic">&ldquo;{voice.transcript}&rdquo;</p>
             </div>
           )}
 

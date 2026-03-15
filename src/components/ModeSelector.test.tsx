@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { ModeSelector, AssistantMode } from './ModeSelector';
+import { ModeSelector } from './ModeSelector';
 
 describe('ModeSelector', () => {
   it('should render all four mode options', () => {

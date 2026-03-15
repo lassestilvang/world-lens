@@ -2,7 +2,6 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import Page from './page';
 import { analyzeFrame } from '../services/novaVision';
 import { evaluateProactiveSuggestion } from '../services/orchestrator';
-import CameraStream from '../components/CameraStream';
 
 // Mock AI services
 jest.mock('../services/novaVision', () => ({

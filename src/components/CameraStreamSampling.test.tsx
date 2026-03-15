@@ -1,4 +1,4 @@
-import { render, screen, act } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import CameraStream from './CameraStream';
 import { FrameSampler } from '../utils/frameSampling';
 import React from 'react';

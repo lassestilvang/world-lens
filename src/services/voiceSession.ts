@@ -14,6 +14,8 @@
 import {
   BedrockRuntimeClient,
   InvokeModelWithBidirectionalStreamCommand,
+  type InvokeModelWithBidirectionalStreamInput,
+  type InvokeModelWithBidirectionalStreamOutput,
 } from '@aws-sdk/client-bedrock-runtime';
 import { fromCognitoIdentityPool } from '@aws-sdk/credential-provider-cognito-identity';
 
@@ -211,7 +213,7 @@ export class VoiceSession {
   private isCapturing = false;
 
   private client: BedrockRuntimeClient | null = null;
-  private inputQueue: Array<object> = [];
+  private inputQueue: Array<InvokeModelWithBidirectionalStreamInput> = [];
   private resolveInput: (() => void) | null = null;
   private isActive = false;
   private streamTask: Promise<void> | null = null;
@@ -285,7 +287,7 @@ export class VoiceSession {
 
     const command = new InvokeModelWithBidirectionalStreamCommand({
       modelId: SONIC_MODEL_ID,
-      body: this.inputStream() as AsyncIterable<unknown>,
+      body: this.inputStream(),
     });
 
     try {
@@ -294,8 +296,32 @@ export class VoiceSession {
       this.emit({ type: 'sessionStarted' });
 
       if (response.body) {
-        for await (const event of response.body as AsyncIterable<Record<string, unknown>>) {
-          this.processOutputEvent(event);
+        for await (const event of response.body as AsyncIterable<InvokeModelWithBidirectionalStreamOutput>) {
+          if ('chunk' in event && event.chunk?.bytes) {
+            const payloadText = new TextDecoder().decode(event.chunk.bytes);
+            const payload = JSON.parse(payloadText) as Record<string, unknown>;
+            this.processOutputEvent(payload);
+            continue;
+          }
+
+          if ('internalServerException' in event && event.internalServerException?.message) {
+            throw new Error(event.internalServerException.message);
+          }
+          if ('modelStreamErrorException' in event && event.modelStreamErrorException?.message) {
+            throw new Error(event.modelStreamErrorException.message);
+          }
+          if ('modelTimeoutException' in event && event.modelTimeoutException?.message) {
+            throw new Error(event.modelTimeoutException.message);
+          }
+          if ('serviceUnavailableException' in event && event.serviceUnavailableException?.message) {
+            throw new Error(event.serviceUnavailableException.message);
+          }
+          if ('throttlingException' in event && event.throttlingException?.message) {
+            throw new Error(event.throttlingException.message);
+          }
+          if ('validationException' in event && event.validationException?.message) {
+            throw new Error(event.validationException.message);
+          }
         }
       }
     } catch (error) {
@@ -314,12 +340,14 @@ export class VoiceSession {
   /**
    * AsyncIterable input stream for the bidirectional API.
    */
-  private async *inputStream(): AsyncIterable<object> {
-    yield createSessionEvent({
-      systemPrompt: buildSystemPrompt(this.config.memoryContext),
-      tools: getSonicTools(),
-      voiceId: this.config.voiceId,
-    });
+  private async *inputStream(): AsyncIterable<InvokeModelWithBidirectionalStreamInput> {
+    yield this.encodeInput(
+      createSessionEvent({
+        systemPrompt: buildSystemPrompt(this.config.memoryContext),
+        tools: getSonicTools(),
+        voiceId: this.config.voiceId,
+      })
+    );
 
     while (this.isActive || this.inputQueue.length > 0) {
       if (this.inputQueue.length > 0) {
@@ -342,8 +370,10 @@ export class VoiceSession {
         const audioData = event.audioOutput as { audio?: string };
         if (audioData.audio) {
           const audioBytes = base64ToUint8(audioData.audio);
-          this.playAudio(audioBytes.buffer);
-          this.emit({ type: 'audio', audio: audioBytes.buffer });
+          const audioBuffer = new ArrayBuffer(audioBytes.byteLength);
+          new Uint8Array(audioBuffer).set(audioBytes);
+          this.playAudio(audioBuffer);
+          this.emit({ type: 'audio', audio: audioBuffer });
         }
         return;
       }
@@ -455,7 +485,7 @@ export class VoiceSession {
    */
   private sendAudio(pcmData: Int16Array): void {
     if (!this.isActive) return;
-    this.inputQueue.push(createAudioEvent(new Uint8Array(pcmData.buffer)));
+    this.inputQueue.push(this.encodeInput(createAudioEvent(new Uint8Array(pcmData.buffer))));
     this.resolveInput?.();
   }
 
@@ -468,7 +498,7 @@ export class VoiceSession {
       return;
     }
 
-    this.inputQueue.push(createTextEvent(text));
+    this.inputQueue.push(this.encodeInput(createTextEvent(text)));
     this.resolveInput?.();
   }
 
@@ -477,7 +507,7 @@ export class VoiceSession {
    */
   sendToolResult(toolUseId: string, result: string): void {
     if (!this.isActive) return;
-    this.inputQueue.push(createToolResultEvent(toolUseId, result));
+    this.inputQueue.push(this.encodeInput(createToolResultEvent(toolUseId, result)));
     this.resolveInput?.();
   }
 
@@ -487,7 +517,7 @@ export class VoiceSession {
   async disconnect(): Promise<void> {
     this.stopCapture();
     if (this.isActive) {
-      this.inputQueue.push(createEndSessionEvent());
+      this.inputQueue.push(this.encodeInput(createEndSessionEvent()));
       this.resolveInput?.();
     }
 
@@ -511,6 +541,12 @@ export class VoiceSession {
 
   get capturing(): boolean {
     return this.isCapturing;
+  }
+
+  private encodeInput(event: object): InvokeModelWithBidirectionalStreamInput {
+    const json = JSON.stringify(event);
+    const bytes = new TextEncoder().encode(json);
+    return { chunk: { bytes } };
   }
 
   // ─── Audio Playback ──────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { GROCERY_TOOL_SCHEMA, MEDICAL_TOOL_SCHEMA, searchGroceryPrice, searchMedicalDatabase } from './searchTools';
+import { GROCERY_TOOL_SCHEMA, MEDICAL_TOOL_SCHEMA, searchMedicalDatabase } from './searchTools';
 import { verifyGroceryWithNovaAct } from './groceryIntegration';
 
 export interface OrchestrationContext {
