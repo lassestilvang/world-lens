@@ -21,29 +21,53 @@ export interface SonicSessionConfig {
 }
 
 /**
- * Creates the initial session configuration event for Nova Sonic.
+ * Creates the session start event for Nova Sonic.
  */
-function createSessionEvent(config: SonicSessionConfig): object {
+function createSessionStartEvent(): object {
   return {
     event: {
-      sessionConfiguration: {
-        instructionEvent: {
-          content: config.systemPrompt,
+      sessionStart: {
+        inferenceConfiguration: {
+          maxTokens: 1024,
+          topP: 0.9,
+          temperature: 0.7,
+        },
+        turnDetectionConfiguration: {
+          endpointingSensitivity: 'MEDIUM',
+        },
+      },
+    },
+  };
+}
+
+/**
+ * Creates the prompt start event for Nova Sonic.
+ */
+function createPromptStartEvent(config: {
+  promptName: string;
+  tools?: SonicToolDefinition[];
+  voiceId?: string;
+}): object {
+  return {
+    event: {
+      promptStart: {
+        promptName: config.promptName,
+        textOutputConfiguration: {
+          mediaType: 'text/plain',
         },
         audioOutputConfiguration: {
+          mediaType: 'audio/lpcm',
+          sampleRateHertz: 16000,
+          sampleSizeBits: 16,
+          channelCount: 1,
           voiceId: config.voiceId || 'tiffany',
-          mediaType: 'audio/lpcm',
-          sampleRateHertz: 16000,
-          sampleSizeBits: 16,
-          channelCount: 1,
+          encoding: 'base64',
+          audioType: 'SPEECH',
         },
-        audioInputConfiguration: {
-          mediaType: 'audio/lpcm',
-          sampleRateHertz: 16000,
-          sampleSizeBits: 16,
-          channelCount: 1,
+        toolUseOutputConfiguration: {
+          mediaType: 'application/json',
         },
-        toolUseConfiguration: config.tools
+        toolConfiguration: config.tools
           ? {
               tools: config.tools.map((t) => ({
                 toolSpec: {
@@ -59,14 +83,87 @@ function createSessionEvent(config: SonicSessionConfig): object {
   };
 }
 
+function createContentStartEvent(config: {
+  promptName: string;
+  contentName: string;
+  type: 'TEXT' | 'AUDIO' | 'TOOL';
+  interactive: boolean;
+  role: 'SYSTEM' | 'USER' | 'ASSISTANT' | 'TOOL' | 'SYSTEM_SPEECH';
+  toolUseId?: string;
+}): object {
+  if (config.type === 'AUDIO') {
+    return {
+      event: {
+        contentStart: {
+          promptName: config.promptName,
+          contentName: config.contentName,
+          type: 'AUDIO',
+          interactive: true,
+          role: 'USER',
+          audioInputConfiguration: {
+            mediaType: 'audio/lpcm',
+            sampleRateHertz: 16000,
+            sampleSizeBits: 16,
+            channelCount: 1,
+            audioType: 'SPEECH',
+            encoding: 'base64',
+          },
+        },
+      },
+    };
+  }
+
+  if (config.type === 'TOOL') {
+    return {
+      event: {
+        contentStart: {
+          promptName: config.promptName,
+          contentName: config.contentName,
+          type: 'TOOL',
+          interactive: false,
+          role: 'TOOL',
+          toolResultInputConfiguration: {
+            toolUseId: config.toolUseId,
+            type: 'TEXT',
+            textInputConfiguration: {
+              mediaType: 'text/plain',
+            },
+          },
+        },
+      },
+    };
+  }
+
+  return {
+    event: {
+      contentStart: {
+        promptName: config.promptName,
+        contentName: config.contentName,
+        type: 'TEXT',
+        interactive: config.interactive,
+        role: config.role,
+        textInputConfiguration: {
+          mediaType: 'text/plain',
+        },
+      },
+    },
+  };
+}
+
 /**
  * Creates an audio input event from raw PCM bytes.
  */
-function createAudioEvent(audioChunk: Uint8Array): object {
+function createAudioEvent(config: {
+  promptName: string;
+  contentName: string;
+  audioChunk: Uint8Array;
+}): object {
   return {
     event: {
       audioInput: {
-        audio: Buffer.from(audioChunk).toString('base64'),
+        promptName: config.promptName,
+        contentName: config.contentName,
+        content: Buffer.from(config.audioChunk).toString('base64'),
       },
     },
   };
@@ -75,11 +172,13 @@ function createAudioEvent(audioChunk: Uint8Array): object {
 /**
  * Creates a text input event for text-based interaction.
  */
-function createTextEvent(text: string): object {
+function createTextEvent(config: { promptName: string; contentName: string; text: string }): object {
   return {
     event: {
       textInput: {
-        content: text,
+        promptName: config.promptName,
+        contentName: config.contentName,
+        content: config.text,
       },
     },
   };
@@ -88,13 +187,39 @@ function createTextEvent(text: string): object {
 /**
  * Creates a tool result event to return results back to Sonic.
  */
-function createToolResultEvent(toolUseId: string, result: string): object {
+function createToolResultEvent(config: {
+  promptName: string;
+  contentName: string;
+  result: string;
+}): object {
   return {
     event: {
       toolResult: {
-        toolUseId,
-        content: result,
+        promptName: config.promptName,
+        contentName: config.contentName,
+        content: config.result,
         status: 'success',
+      },
+    },
+  };
+}
+
+function createContentEndEvent(config: { promptName: string; contentName: string }): object {
+  return {
+    event: {
+      contentEnd: {
+        promptName: config.promptName,
+        contentName: config.contentName,
+      },
+    },
+  };
+}
+
+function createPromptEndEvent(promptName: string): object {
+  return {
+    event: {
+      promptEnd: {
+        promptName,
       },
     },
   };
@@ -140,6 +265,8 @@ export class SonicSession {
   private inputQueue: Array<object> = [];
   private isActive = false;
   private resolveInput: (() => void) | null = null;
+  private promptName = `prompt-${Date.now()}`;
+  private audioContentName: string | null = null;
 
   constructor(config: SonicSessionConfig) {
     this.config = config;
@@ -163,7 +290,25 @@ export class SonicSession {
    */
   sendAudio(audioChunk: Uint8Array): void {
     if (!this.isActive) return;
-    this.inputQueue.push(createAudioEvent(audioChunk));
+    if (!this.audioContentName) {
+      this.audioContentName = `audio-${Date.now()}`;
+      this.inputQueue.push(
+        createContentStartEvent({
+          promptName: this.promptName,
+          contentName: this.audioContentName,
+          type: 'AUDIO',
+          interactive: true,
+          role: 'USER',
+        })
+      );
+    }
+    this.inputQueue.push(
+      createAudioEvent({
+        promptName: this.promptName,
+        contentName: this.audioContentName,
+        audioChunk,
+      })
+    );
     this.resolveInput?.();
   }
 
@@ -172,7 +317,29 @@ export class SonicSession {
    */
   sendText(text: string): void {
     if (!this.isActive) return;
-    this.inputQueue.push(createTextEvent(text));
+    const contentName = `text-${Date.now()}`;
+    this.inputQueue.push(
+      createContentStartEvent({
+        promptName: this.promptName,
+        contentName,
+        type: 'TEXT',
+        interactive: true,
+        role: 'USER',
+      })
+    );
+    this.inputQueue.push(
+      createTextEvent({
+        promptName: this.promptName,
+        contentName,
+        text,
+      })
+    );
+    this.inputQueue.push(
+      createContentEndEvent({
+        promptName: this.promptName,
+        contentName,
+      })
+    );
     this.resolveInput?.();
   }
 
@@ -181,7 +348,30 @@ export class SonicSession {
    */
   sendToolResult(toolUseId: string, result: string): void {
     if (!this.isActive) return;
-    this.inputQueue.push(createToolResultEvent(toolUseId, result));
+    const contentName = `tool-${Date.now()}`;
+    this.inputQueue.push(
+      createContentStartEvent({
+        promptName: this.promptName,
+        contentName,
+        type: 'TOOL',
+        interactive: false,
+        role: 'TOOL',
+        toolUseId,
+      })
+    );
+    this.inputQueue.push(
+      createToolResultEvent({
+        promptName: this.promptName,
+        contentName,
+        result,
+      })
+    );
+    this.inputQueue.push(
+      createContentEndEvent({
+        promptName: this.promptName,
+        contentName,
+      })
+    );
     this.resolveInput?.();
   }
 
@@ -190,6 +380,16 @@ export class SonicSession {
    */
   async end(): Promise<void> {
     this.isActive = false;
+    if (this.audioContentName) {
+      this.inputQueue.push(
+        createContentEndEvent({
+          promptName: this.promptName,
+          contentName: this.audioContentName,
+        })
+      );
+      this.audioContentName = null;
+    }
+    this.inputQueue.push(createPromptEndEvent(this.promptName));
     this.inputQueue.push(createEndSessionEvent());
     this.resolveInput?.();
   }
@@ -199,8 +399,31 @@ export class SonicSession {
    * Yields events from the queue, waiting when empty.
    */
   private async *inputStream(): AsyncIterable<object> {
-    // First event: session configuration
-    yield createSessionEvent(this.config);
+    const systemContentName = `system-${Date.now()}`;
+
+    // First event: session start + prompt start + system prompt
+    yield createSessionStartEvent();
+    yield createPromptStartEvent({
+      promptName: this.promptName,
+      tools: this.config.tools,
+      voiceId: this.config.voiceId,
+    });
+    yield createContentStartEvent({
+      promptName: this.promptName,
+      contentName: systemContentName,
+      type: 'TEXT',
+      interactive: false,
+      role: 'SYSTEM',
+    });
+    yield createTextEvent({
+      promptName: this.promptName,
+      contentName: systemContentName,
+      text: this.config.systemPrompt,
+    });
+    yield createContentEndEvent({
+      promptName: this.promptName,
+      contentName: systemContentName,
+    });
 
     // Subsequent events: audio/text/toolResult from the queue
     while (this.isActive || this.inputQueue.length > 0) {
@@ -254,11 +477,11 @@ export class SonicSession {
     try {
       // Audio output
       if (event.audioOutput) {
-        const audioData = event.audioOutput as { audio?: string };
-        if (audioData.audio) {
+        const audioData = event.audioOutput as { content?: string };
+        if (audioData.content) {
           this.emit({
             type: 'audio',
-            audioChunk: Buffer.from(audioData.audio, 'base64'),
+            audioChunk: Buffer.from(audioData.content, 'base64'),
           });
         }
         return;

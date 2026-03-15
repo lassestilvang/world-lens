@@ -70,6 +70,13 @@ CRITICAL RULES:
   return base;
 }
 
+function createId(prefix: string): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+  return `${prefix}-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+}
+
 function getSonicTools() {
   return [
     {
@@ -108,31 +115,48 @@ function getSonicTools() {
   ];
 }
 
-function createSessionEvent(config: {
-  systemPrompt: string;
+function createSessionStartEvent(): object {
+  return {
+    event: {
+      sessionStart: {
+        inferenceConfiguration: {
+          maxTokens: 1024,
+          topP: 0.9,
+          temperature: 0.7,
+        },
+        turnDetectionConfiguration: {
+          endpointingSensitivity: 'MEDIUM',
+        },
+      },
+    },
+  };
+}
+
+function createPromptStartEvent(config: {
+  promptName: string;
   tools?: ReturnType<typeof getSonicTools>;
   voiceId?: string;
 }): object {
   return {
     event: {
-      sessionConfiguration: {
-        instructionEvent: {
-          content: config.systemPrompt,
+      promptStart: {
+        promptName: config.promptName,
+        textOutputConfiguration: {
+          mediaType: 'text/plain',
         },
         audioOutputConfiguration: {
+          mediaType: 'audio/lpcm',
+          sampleRateHertz: 16000,
+          sampleSizeBits: 16,
+          channelCount: 1,
           voiceId: config.voiceId || 'tiffany',
-          mediaType: 'audio/lpcm',
-          sampleRateHertz: 16000,
-          sampleSizeBits: 16,
-          channelCount: 1,
+          encoding: 'base64',
+          audioType: 'SPEECH',
         },
-        audioInputConfiguration: {
-          mediaType: 'audio/lpcm',
-          sampleRateHertz: 16000,
-          sampleSizeBits: 16,
-          channelCount: 1,
+        toolUseOutputConfiguration: {
+          mediaType: 'application/json',
         },
-        toolUseConfiguration: config.tools
+        toolConfiguration: config.tools
           ? {
               tools: config.tools.map((t) => ({
                 toolSpec: {
@@ -143,6 +167,73 @@ function createSessionEvent(config: {
               })),
             }
           : undefined,
+      },
+    },
+  };
+}
+
+function createContentStartEvent(config: {
+  promptName: string;
+  contentName: string;
+  type: 'TEXT' | 'AUDIO' | 'TOOL';
+  interactive: boolean;
+  role: 'SYSTEM' | 'USER' | 'ASSISTANT' | 'TOOL' | 'SYSTEM_SPEECH';
+  toolUseId?: string;
+}): object {
+  if (config.type === 'AUDIO') {
+    return {
+      event: {
+        contentStart: {
+          promptName: config.promptName,
+          contentName: config.contentName,
+          type: 'AUDIO',
+          interactive: true,
+          role: 'USER',
+          audioInputConfiguration: {
+            mediaType: 'audio/lpcm',
+            sampleRateHertz: 16000,
+            sampleSizeBits: 16,
+            channelCount: 1,
+            audioType: 'SPEECH',
+            encoding: 'base64',
+          },
+        },
+      },
+    };
+  }
+
+  if (config.type === 'TOOL') {
+    return {
+      event: {
+        contentStart: {
+          promptName: config.promptName,
+          contentName: config.contentName,
+          type: 'TOOL',
+          interactive: false,
+          role: 'TOOL',
+          toolResultInputConfiguration: {
+            toolUseId: config.toolUseId,
+            type: 'TEXT',
+            textInputConfiguration: {
+              mediaType: 'text/plain',
+            },
+          },
+        },
+      },
+    };
+  }
+
+  return {
+    event: {
+      contentStart: {
+        promptName: config.promptName,
+        contentName: config.contentName,
+        type: 'TEXT',
+        interactive: config.interactive,
+        role: config.role,
+        textInputConfiguration: {
+          mediaType: 'text/plain',
+        },
       },
     },
   };
@@ -165,33 +256,74 @@ function base64ToUint8(base64: string): Uint8Array {
   return bytes;
 }
 
-function createAudioEvent(audioChunk: Uint8Array): object {
+function createAudioEvent(config: {
+  promptName: string;
+  contentName: string;
+  audioChunk: Uint8Array;
+}): object {
   return {
     event: {
       audioInput: {
-        audio: uint8ToBase64(audioChunk),
+        promptName: config.promptName,
+        contentName: config.contentName,
+        content: uint8ToBase64(config.audioChunk),
       },
     },
   };
 }
 
-function createTextEvent(text: string): object {
+function createTextEvent(config: {
+  promptName: string;
+  contentName: string;
+  text: string;
+}): object {
   return {
     event: {
       textInput: {
-        content: text,
+        promptName: config.promptName,
+        contentName: config.contentName,
+        content: config.text,
       },
     },
   };
 }
 
-function createToolResultEvent(toolUseId: string, result: string): object {
+function createToolResultEvent(config: {
+  promptName: string;
+  contentName: string;
+  result: string;
+}): object {
   return {
     event: {
       toolResult: {
-        toolUseId,
-        content: result,
+        promptName: config.promptName,
+        contentName: config.contentName,
+        content: config.result,
         status: 'success',
+      },
+    },
+  };
+}
+
+function createContentEndEvent(config: {
+  promptName: string;
+  contentName: string;
+}): object {
+  return {
+    event: {
+      contentEnd: {
+        promptName: config.promptName,
+        contentName: config.contentName,
+      },
+    },
+  };
+}
+
+function createPromptEndEvent(promptName: string): object {
+  return {
+    event: {
+      promptEnd: {
+        promptName,
       },
     },
   };
@@ -219,9 +351,12 @@ export class VoiceSession {
   private isActive = false;
   private streamTask: Promise<void> | null = null;
   private sessionStarted = false;
+  private promptName: string;
+  private audioContentName: string | null = null;
 
   constructor(config: VoiceSessionConfig) {
     this.config = config;
+    this.promptName = config.sessionId || createId('prompt');
   }
 
   /**
@@ -400,11 +535,37 @@ export class VoiceSession {
    * AsyncIterable input stream for the bidirectional API.
    */
   private async *inputStream(): AsyncIterable<InvokeModelWithBidirectionalStreamInput> {
+    const systemPrompt = buildSystemPrompt(this.config.memoryContext);
+    const systemContentName = createId('system');
+
+    yield this.encodeInput(createSessionStartEvent());
     yield this.encodeInput(
-      createSessionEvent({
-        systemPrompt: buildSystemPrompt(this.config.memoryContext),
+      createPromptStartEvent({
+        promptName: this.promptName,
         tools: getSonicTools(),
         voiceId: this.config.voiceId,
+      })
+    );
+    yield this.encodeInput(
+      createContentStartEvent({
+        promptName: this.promptName,
+        contentName: systemContentName,
+        type: 'TEXT',
+        interactive: false,
+        role: 'SYSTEM',
+      })
+    );
+    yield this.encodeInput(
+      createTextEvent({
+        promptName: this.promptName,
+        contentName: systemContentName,
+        text: systemPrompt,
+      })
+    );
+    yield this.encodeInput(
+      createContentEndEvent({
+        promptName: this.promptName,
+        contentName: systemContentName,
       })
     );
 
@@ -426,9 +587,9 @@ export class VoiceSession {
   private processOutputEvent(event: Record<string, unknown>): void {
     try {
       if (event.audioOutput) {
-        const audioData = event.audioOutput as { audio?: string };
-        if (audioData.audio) {
-          const audioBytes = base64ToUint8(audioData.audio);
+        const audioData = event.audioOutput as { content?: string };
+        if (audioData.content) {
+          const audioBytes = base64ToUint8(audioData.content);
           const audioBuffer = new ArrayBuffer(audioBytes.byteLength);
           new Uint8Array(audioBuffer).set(audioBytes);
           this.playAudio(audioBuffer);
@@ -537,6 +698,19 @@ export class VoiceSession {
       this.audioContext.close().catch(console.error);
       this.audioContext = null;
     }
+
+    if (this.isActive && this.audioContentName) {
+      this.inputQueue.push(
+        this.encodeInput(
+          createContentEndEvent({
+            promptName: this.promptName,
+            contentName: this.audioContentName,
+          })
+        )
+      );
+      this.resolveInput?.();
+      this.audioContentName = null;
+    }
   }
 
   /**
@@ -544,7 +718,30 @@ export class VoiceSession {
    */
   private sendAudio(pcmData: Int16Array): void {
     if (!this.isActive) return;
-    this.inputQueue.push(this.encodeInput(createAudioEvent(new Uint8Array(pcmData.buffer))));
+    if (!this.audioContentName) {
+      this.audioContentName = createId('audio');
+      this.inputQueue.push(
+        this.encodeInput(
+          createContentStartEvent({
+            promptName: this.promptName,
+            contentName: this.audioContentName,
+            type: 'AUDIO',
+            interactive: true,
+            role: 'USER',
+          })
+        )
+      );
+    }
+
+    this.inputQueue.push(
+      this.encodeInput(
+        createAudioEvent({
+          promptName: this.promptName,
+          contentName: this.audioContentName,
+          audioChunk: new Uint8Array(pcmData.buffer),
+        })
+      )
+    );
     this.resolveInput?.();
   }
 
@@ -557,7 +754,35 @@ export class VoiceSession {
       return;
     }
 
-    this.inputQueue.push(this.encodeInput(createTextEvent(text)));
+    const contentName = createId('text');
+    this.inputQueue.push(
+      this.encodeInput(
+        createContentStartEvent({
+          promptName: this.promptName,
+          contentName,
+          type: 'TEXT',
+          interactive: true,
+          role: 'USER',
+        })
+      )
+    );
+    this.inputQueue.push(
+      this.encodeInput(
+        createTextEvent({
+          promptName: this.promptName,
+          contentName,
+          text,
+        })
+      )
+    );
+    this.inputQueue.push(
+      this.encodeInput(
+        createContentEndEvent({
+          promptName: this.promptName,
+          contentName,
+        })
+      )
+    );
     this.resolveInput?.();
   }
 
@@ -566,7 +791,36 @@ export class VoiceSession {
    */
   sendToolResult(toolUseId: string, result: string): void {
     if (!this.isActive) return;
-    this.inputQueue.push(this.encodeInput(createToolResultEvent(toolUseId, result)));
+    const contentName = createId('tool');
+    this.inputQueue.push(
+      this.encodeInput(
+        createContentStartEvent({
+          promptName: this.promptName,
+          contentName,
+          type: 'TOOL',
+          interactive: false,
+          role: 'TOOL',
+          toolUseId,
+        })
+      )
+    );
+    this.inputQueue.push(
+      this.encodeInput(
+        createToolResultEvent({
+          promptName: this.promptName,
+          contentName,
+          result,
+        })
+      )
+    );
+    this.inputQueue.push(
+      this.encodeInput(
+        createContentEndEvent({
+          promptName: this.promptName,
+          contentName,
+        })
+      )
+    );
     this.resolveInput?.();
   }
 
@@ -576,6 +830,18 @@ export class VoiceSession {
   async disconnect(): Promise<void> {
     this.stopCapture();
     if (this.isActive) {
+      if (this.audioContentName) {
+        this.inputQueue.push(
+          this.encodeInput(
+            createContentEndEvent({
+              promptName: this.promptName,
+              contentName: this.audioContentName,
+            })
+          )
+        );
+        this.audioContentName = null;
+      }
+      this.inputQueue.push(this.encodeInput(createPromptEndEvent(this.promptName)));
       this.inputQueue.push(this.encodeInput(createEndSessionEvent()));
       this.resolveInput?.();
     }
