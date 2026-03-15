@@ -1,20 +1,31 @@
 'use client';
 
 /**
- * VoiceSession — manages the WebSocket connection to the Nova Sonic voice pipeline.
+ * VoiceSession — manages direct streaming to Nova Sonic via Bedrock Runtime.
  *
  * Handles:
- * - WebSocket lifecycle (connect, reconnect, disconnect)
+ * - Bedrock bidirectional streaming session
  * - Audio capture from microphone (PCM 16-bit, 16kHz mono)
- * - Sending audio chunks to the Lambda → Sonic pipeline
+ * - Sending audio chunks to Bedrock
  * - Receiving and playing audio response chunks
  * - Tool call events and transcript events
  */
 
+import {
+  BedrockRuntimeClient,
+  InvokeModelWithBidirectionalStreamCommand,
+} from '@aws-sdk/client-bedrock-runtime';
+import { fromCognitoIdentityPool } from '@aws-sdk/credential-provider-cognito-identity';
+
+const SONIC_MODEL_ID = 'amazon.nova-sonic-v1:0';
+
 export interface VoiceSessionConfig {
-  wsUrl: string;
   sessionId: string;
   memoryContext?: string;
+  bedrockRegion?: string;
+  identityRegion?: string;
+  identityPoolId?: string;
+  voiceId?: string;
 }
 
 export type VoiceEventType =
@@ -41,22 +52,170 @@ export interface VoiceEvent {
 
 type VoiceEventCallback = (event: VoiceEvent) => void;
 
+function buildSystemPrompt(memoryContext?: string): string {
+  const base = `You are WorldLens, an AI assistant that helps users understand the world around them through their camera and voice. You are friendly, concise, and proactive.
+
+CRITICAL RULES:
+1. If you cannot clearly see or read something, say so honestly.
+2. For medical/legal/financial content, always include a safety disclaimer.
+3. Be concise — the user is having a real-time conversation, not reading an essay.
+4. When a new object is relevant to the user's stated goal, proactively mention it.`;
+
+  if (memoryContext) {
+    return `${base}\n\nCurrent World Memory:\n${memoryContext}`;
+  }
+  return base;
+}
+
+function getSonicTools() {
+  return [
+    {
+      toolName: 'analyze_frame',
+      description:
+        'Analyze the current camera frame to identify objects, text, and environment type. Call this when the user asks about what they see or when you need visual context.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          question: {
+            type: 'string',
+            description: 'What to look for in the frame',
+          },
+        },
+      },
+    },
+    {
+      toolName: 'update_memory',
+      description:
+        'Update the world memory with new observations. Call this when new important objects or context are detected.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          observations: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'List of new observations to add to memory',
+          },
+          userGoal: {
+            type: 'string',
+            description: 'Updated user goal if detected from conversation',
+          },
+        },
+      },
+    },
+  ];
+}
+
+function createSessionEvent(config: {
+  systemPrompt: string;
+  tools?: ReturnType<typeof getSonicTools>;
+  voiceId?: string;
+}): object {
+  return {
+    event: {
+      sessionConfiguration: {
+        instructionEvent: {
+          content: config.systemPrompt,
+        },
+        audioOutputConfiguration: {
+          voiceId: config.voiceId || 'tiffany',
+          mediaType: 'audio/lpcm',
+          sampleRateHertz: 16000,
+          sampleSizeBits: 16,
+          channelCount: 1,
+        },
+        audioInputConfiguration: {
+          mediaType: 'audio/lpcm',
+          sampleRateHertz: 16000,
+          sampleSizeBits: 16,
+          channelCount: 1,
+        },
+        toolUseConfiguration: config.tools
+          ? {
+              tools: config.tools.map((t) => ({
+                toolSpec: {
+                  name: t.toolName,
+                  description: t.description,
+                  inputSchema: { json: JSON.stringify(t.inputSchema) },
+                },
+              })),
+            }
+          : undefined,
+      },
+    },
+  };
+}
+
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function base64ToUint8(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function createAudioEvent(audioChunk: Uint8Array): object {
+  return {
+    event: {
+      audioInput: {
+        audio: uint8ToBase64(audioChunk),
+      },
+    },
+  };
+}
+
+function createTextEvent(text: string): object {
+  return {
+    event: {
+      textInput: {
+        content: text,
+      },
+    },
+  };
+}
+
+function createToolResultEvent(toolUseId: string, result: string): object {
+  return {
+    event: {
+      toolResult: {
+        toolUseId,
+        content: result,
+        status: 'success',
+      },
+    },
+  };
+}
+
+function createEndSessionEvent(): object {
+  return {
+    event: {
+      sessionEnd: {},
+    },
+  };
+}
+
 export class VoiceSession {
-  private ws: WebSocket | null = null;
   private config: VoiceSessionConfig;
   private callbacks: VoiceEventCallback[] = [];
   private audioContext: AudioContext | null = null;
   private mediaStream: MediaStream | null = null;
   private workletNode: AudioWorkletNode | ScriptProcessorNode | null = null;
   private isCapturing = false;
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 3;
-  private reconnectDelay = 1000;
+
+  private client: BedrockRuntimeClient | null = null;
+  private inputQueue: Array<object> = [];
+  private resolveInput: (() => void) | null = null;
+  private isActive = false;
+  private streamTask: Promise<void> | null = null;
   private sessionStarted = false;
-  private sessionStartedPromise: Promise<void> | null = null;
-  private sessionStartedResolve: (() => void) | null = null;
-  private sessionStartedReject: ((error: Error) => void) | null = null;
-  private sessionStartedTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(config: VoiceSessionConfig) {
     this.config = config;
@@ -80,153 +239,152 @@ export class VoiceSession {
   }
 
   /**
-   * Connect to the WebSocket voice pipeline and start a Sonic session.
+   * Initialize the Bedrock runtime client and start the session stream.
    */
   async connect(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.sessionStarted = false;
-      if (this.sessionStartedTimeout) {
-        clearTimeout(this.sessionStartedTimeout);
-        this.sessionStartedTimeout = null;
-      }
-      this.sessionStartedResolve = null;
-      this.sessionStartedReject = null;
-      this.sessionStartedPromise = new Promise<void>((innerResolve, innerReject) => {
-        this.sessionStartedResolve = innerResolve;
-        this.sessionStartedReject = innerReject;
-      });
+    if (this.isActive) return;
 
-      const url = `${this.config.wsUrl}?sessionId=${encodeURIComponent(this.config.sessionId)}`;
-      this.ws = new WebSocket(url);
+    const identityPoolId =
+      this.config.identityPoolId || process.env.NEXT_PUBLIC_COGNITO_IDENTITY_POOL_ID;
+    if (!identityPoolId) {
+      throw new Error('Missing Cognito Identity Pool ID (NEXT_PUBLIC_COGNITO_IDENTITY_POOL_ID)');
+    }
 
-      this.ws.onopen = () => {
-        console.log('[VoiceSession] WebSocket connected');
-        this.reconnectAttempts = 0;
-        this.emit({ type: 'connected' });
+    const bedrockRegion =
+      this.config.bedrockRegion ||
+      process.env.NEXT_PUBLIC_BEDROCK_REGION ||
+      process.env.NEXT_PUBLIC_AWS_REGION;
+    if (!bedrockRegion) {
+      throw new Error('Missing Bedrock region (NEXT_PUBLIC_BEDROCK_REGION or NEXT_PUBLIC_AWS_REGION)');
+    }
 
-        // Start a Sonic session
-        this.sendStartSession();
+    const identityRegion =
+      this.config.identityRegion || process.env.NEXT_PUBLIC_AWS_REGION || bedrockRegion;
 
-        resolve();
-      };
-
-      this.ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data as string);
-          this.handleServerMessage(data);
-        } catch (err) {
-          console.error('[VoiceSession] Message parse error:', err);
-        }
-      };
-
-      this.ws.onerror = (error) => {
-        console.error('[VoiceSession] WebSocket error:', error);
-        this.emit({ type: 'error', error: 'WebSocket connection error' });
-        if (this.sessionStartedReject) {
-          this.sessionStartedReject(new Error('WebSocket connection error'));
-          this.sessionStartedReject = null;
-        }
-        if (this.sessionStartedTimeout) {
-          clearTimeout(this.sessionStartedTimeout);
-          this.sessionStartedTimeout = null;
-        }
-        reject(error);
-      };
-
-      this.ws.onclose = () => {
-        console.log('[VoiceSession] WebSocket closed');
-        this.emit({ type: 'disconnected' });
-        this.stopCapture();
-        if (this.sessionStartedReject) {
-          this.sessionStartedReject(new Error('WebSocket closed before session started'));
-          this.sessionStartedReject = null;
-        }
-        if (this.sessionStartedTimeout) {
-          clearTimeout(this.sessionStartedTimeout);
-          this.sessionStartedTimeout = null;
-        }
-
-        // Auto-reconnect with exponential backoff
-        if (this.reconnectAttempts < this.maxReconnectAttempts) {
-          this.reconnectAttempts++;
-          const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-          console.log(`[VoiceSession] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
-          setTimeout(() => this.connect().catch(console.error), delay);
-        }
-      };
+    const credentials = fromCognitoIdentityPool({
+      clientConfig: { region: identityRegion },
+      identityPoolId,
     });
+
+    this.client = new BedrockRuntimeClient({
+      region: bedrockRegion,
+      credentials,
+    });
+
+    this.isActive = true;
+    this.emit({ type: 'connected' });
+
+    this.streamTask = this.startStream();
   }
 
   /**
-   * Handle incoming messages from the WebSocket server.
+   * Start the Bedrock bidirectional stream and process output events.
    */
-  private handleServerMessage(data: Record<string, unknown>): void {
-    const type = data.type as string;
+  private async startStream(): Promise<void> {
+    if (!this.client) return;
 
-    switch (type) {
-      case 'sessionStarted':
-        this.sessionStarted = true;
-        if (this.sessionStartedResolve) {
-          this.sessionStartedResolve();
-          this.sessionStartedResolve = null;
-        }
-        if (this.sessionStartedTimeout) {
-          clearTimeout(this.sessionStartedTimeout);
-          this.sessionStartedTimeout = null;
-        }
-        this.emit({ type: 'sessionStarted' });
-        break;
+    const command = new InvokeModelWithBidirectionalStreamCommand({
+      modelId: SONIC_MODEL_ID,
+      body: this.inputStream() as AsyncIterable<unknown>,
+    });
 
-      case 'sessionEnded':
-        this.emit({ type: 'sessionEnded' });
-        break;
+    try {
+      const response = await this.client.send(command);
+      this.sessionStarted = true;
+      this.emit({ type: 'sessionStarted' });
 
-      case 'audio': {
-        // Decode and play audio
-        if (data.audio) {
-          const audioBytes = this.base64ToArrayBuffer(data.audio as string);
-          this.playAudio(audioBytes);
-          this.emit({ type: 'audio', audio: audioBytes });
+      if (response.body) {
+        for await (const event of response.body as AsyncIterable<Record<string, unknown>>) {
+          this.processOutputEvent(event);
         }
-        break;
       }
-
-      case 'text':
-        this.emit({ type: 'text', text: data.text as string });
-        break;
-
-      case 'toolUse':
-        this.emit({
-          type: 'toolUse',
-          toolName: data.toolName as string,
-          toolUseId: data.toolUseId as string,
-          toolInput: data.toolInput as Record<string, unknown>,
-        });
-        break;
-
-      case 'turnComplete':
-        this.emit({ type: 'turnComplete' });
-        break;
-
-      case 'error':
-        this.emit({ type: 'error', error: data.error as string });
-        break;
+    } catch (error) {
+      console.error('[VoiceSession] Stream error:', error);
+      this.emit({
+        type: 'error',
+        error: error instanceof Error ? error.message : 'Unknown streaming error',
+      });
+    } finally {
+      this.isActive = false;
+      this.sessionStarted = false;
+      this.emit({ type: 'disconnected' });
     }
   }
 
   /**
-   * Start capturing microphone audio and streaming to the WebSocket.
+   * AsyncIterable input stream for the bidirectional API.
+   */
+  private async *inputStream(): AsyncIterable<object> {
+    yield createSessionEvent({
+      systemPrompt: buildSystemPrompt(this.config.memoryContext),
+      tools: getSonicTools(),
+      voiceId: this.config.voiceId,
+    });
+
+    while (this.isActive || this.inputQueue.length > 0) {
+      if (this.inputQueue.length > 0) {
+        yield this.inputQueue.shift()!;
+      } else {
+        await new Promise<void>((resolve) => {
+          this.resolveInput = resolve;
+        });
+        this.resolveInput = null;
+      }
+    }
+  }
+
+  /**
+   * Handle incoming events from the Bedrock stream.
+   */
+  private processOutputEvent(event: Record<string, unknown>): void {
+    try {
+      if (event.audioOutput) {
+        const audioData = event.audioOutput as { audio?: string };
+        if (audioData.audio) {
+          const audioBytes = base64ToUint8(audioData.audio);
+          this.playAudio(audioBytes.buffer);
+          this.emit({ type: 'audio', audio: audioBytes.buffer });
+        }
+        return;
+      }
+
+      if (event.textOutput) {
+        const textData = event.textOutput as { content?: string };
+        if (textData.content) {
+          this.emit({ type: 'text', text: textData.content });
+        }
+        return;
+      }
+
+      if (event.toolUse) {
+        const toolData = event.toolUse as {
+          toolUseId?: string;
+          name?: string;
+          input?: string;
+        };
+        this.emit({
+          type: 'toolUse',
+          toolUseId: toolData.toolUseId,
+          toolName: toolData.name,
+          toolInput: toolData.input ? JSON.parse(toolData.input) : {},
+        });
+        return;
+      }
+
+      if (event.turnComplete || event.completionReason) {
+        this.emit({ type: 'turnComplete' });
+        return;
+      }
+    } catch (err) {
+      console.error('[VoiceSession] Error processing output event:', err);
+    }
+  }
+
+  /**
+   * Start capturing microphone audio and streaming to Bedrock.
    */
   async startCapture(): Promise<void> {
     if (this.isCapturing) return;
-    if (!this.sessionStarted) {
-      try {
-        await this.awaitSessionStarted();
-      } catch (err) {
-        console.warn('[VoiceSession] Session start not confirmed, proceeding:', err);
-        this.sendStartSession();
-      }
-    }
 
     try {
       this.audioContext = new AudioContext({ sampleRate: 16000 });
@@ -247,7 +405,7 @@ export class VoiceSession {
       this.workletNode = processor;
 
       processor.onaudioprocess = (event) => {
-        if (!this.isCapturing || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+        if (!this.isCapturing) return;
 
         const inputData = event.inputBuffer.getChannelData(0);
 
@@ -258,14 +416,7 @@ export class VoiceSession {
           pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
         }
 
-        // Send as base64-encoded audio
-        const base64 = this.arrayBufferToBase64(pcmData.buffer);
-        this.ws.send(
-          JSON.stringify({
-            action: 'audio',
-            audio: base64,
-          })
-        );
+        this.sendAudio(pcmData);
       };
 
       source.connect(processor);
@@ -300,91 +451,66 @@ export class VoiceSession {
   }
 
   /**
+   * Send audio bytes to the Sonic session.
+   */
+  private sendAudio(pcmData: Int16Array): void {
+    if (!this.isActive) return;
+    this.inputQueue.push(createAudioEvent(new Uint8Array(pcmData.buffer)));
+    this.resolveInput?.();
+  }
+
+  /**
    * Send a text message to the Sonic session.
    */
   sendText(text: string): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+    if (!this.isActive) {
       this.emit({ type: 'error', error: 'Not connected' });
       return;
     }
 
-    this.ws.send(
-      JSON.stringify({
-        action: 'text',
-        text,
-      })
-    );
+    this.inputQueue.push(createTextEvent(text));
+    this.resolveInput?.();
   }
 
   /**
    * Send a tool result back to the Sonic session.
    */
   sendToolResult(toolUseId: string, result: string): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-
-    this.ws.send(
-      JSON.stringify({
-        action: 'toolResult',
-        toolUseId,
-        toolResult: result,
-      })
-    );
+    if (!this.isActive) return;
+    this.inputQueue.push(createToolResultEvent(toolUseId, result));
+    this.resolveInput?.();
   }
 
   /**
    * Disconnect and clean up.
    */
   async disconnect(): Promise<void> {
-    this.maxReconnectAttempts = 0; // Prevent reconnection
     this.stopCapture();
+    if (this.isActive) {
+      this.inputQueue.push(createEndSessionEvent());
+      this.resolveInput?.();
+    }
+
+    this.isActive = false;
     this.sessionStarted = false;
-    if (this.sessionStartedTimeout) {
-      clearTimeout(this.sessionStartedTimeout);
-      this.sessionStartedTimeout = null;
+
+    if (this.streamTask) {
+      await this.streamTask.catch(() => undefined);
+      this.streamTask = null;
     }
 
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({ action: 'endSession' }));
-      this.ws.close();
-    }
+    this.client?.destroy?.();
+    this.client = null;
 
-    this.ws = null;
+    this.emit({ type: 'sessionEnded' });
   }
 
   get connected(): boolean {
-    return this.ws?.readyState === WebSocket.OPEN;
+    return this.isActive;
   }
 
   get capturing(): boolean {
     return this.isCapturing;
-  }
-
-  async awaitSessionStarted(timeoutMs = 15000): Promise<void> {
-    if (this.sessionStarted) return;
-    if (!this.sessionStartedPromise) {
-      throw new Error('Session not initialized');
-    }
-    if (timeoutMs > 0) {
-      this.sessionStartedTimeout = setTimeout(() => {
-        if (this.sessionStartedReject) {
-          this.sessionStartedReject(new Error('Session start timed out'));
-          this.sessionStartedReject = null;
-        }
-        this.sessionStartedTimeout = null;
-      }, timeoutMs);
-    }
-    return this.sessionStartedPromise;
-  }
-
-  private sendStartSession(): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-    this.ws.send(
-      JSON.stringify({
-        action: 'startSession',
-        sessionId: this.config.sessionId,
-        memoryContext: this.config.memoryContext,
-      })
-    );
   }
 
   // ─── Audio Playback ──────────────────────────────────────────────────
@@ -411,25 +537,5 @@ export class VoiceSession {
     } catch (err) {
       console.error('[VoiceSession] Audio playback error:', err);
     }
-  }
-
-  // ─── Utilities ───────────────────────────────────────────────────────
-
-  private arrayBufferToBase64(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
-  }
-
-  private base64ToArrayBuffer(base64: string): ArrayBuffer {
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes.buffer;
   }
 }

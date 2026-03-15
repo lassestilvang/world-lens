@@ -45,9 +45,14 @@ export function useVoiceSession(sessionId: string): UseVoiceSessionReturn {
   }, []);
 
   const startSession = useCallback(async () => {
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
-    if (!wsUrl) {
-      setError('WebSocket URL not configured (NEXT_PUBLIC_WS_URL)');
+    const identityPoolId = process.env.NEXT_PUBLIC_COGNITO_IDENTITY_POOL_ID;
+    const bedrockRegion = process.env.NEXT_PUBLIC_BEDROCK_REGION || process.env.NEXT_PUBLIC_AWS_REGION;
+    if (!identityPoolId) {
+      setError('Cognito Identity Pool ID not configured (NEXT_PUBLIC_COGNITO_IDENTITY_POOL_ID)');
+      return;
+    }
+    if (!bedrockRegion) {
+      setError('Bedrock region not configured (NEXT_PUBLIC_BEDROCK_REGION or NEXT_PUBLIC_AWS_REGION)');
       return;
     }
 
@@ -55,7 +60,6 @@ export function useVoiceSession(sessionId: string): UseVoiceSessionReturn {
       setError(null);
 
       const config: VoiceSessionConfig = {
-        wsUrl,
         sessionId,
       };
 

@@ -60,7 +60,8 @@ export default function Page() {
 
   const handleVoiceToggle = async () => {
     if (!voice.isConnected) {
-      await voice.startSession();
+      // Start session in the background to avoid delaying the mic permission prompt.
+      void voice.startSession();
       await voice.toggleCapture();
     } else if (voice.isCapturing) {
       await voice.toggleCapture();

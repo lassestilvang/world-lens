@@ -6,6 +6,7 @@ import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as apigwv2Integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as cognito from 'aws-cdk-lib/aws-cognito';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
@@ -40,13 +41,64 @@ export class WorldLensStack extends cdk.Stack {
 
     // ─── Bedrock IAM Policy ───────────────────────────────────────────
 
+    const bedrockRegion = 'us-east-1';
+    const bedrockModelArn = `arn:aws:bedrock:${bedrockRegion}::foundation-model/amazon.nova-sonic-v1:0`;
+
     const bedrockPolicy = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
         'bedrock:InvokeModel',
         'bedrock:InvokeModelWithResponseStream',
       ],
-      resources: ['*'],
+      resources: [bedrockModelArn],
+    });
+
+    // ─── Cognito Identity Pool (Browser Credentials) ──────────────────
+
+    const identityPool = new cognito.CfnIdentityPool(this, 'WorldLensIdentityPool', {
+      identityPoolName: 'worldlens-identity-pool',
+      allowUnauthenticatedIdentities: true,
+    });
+
+    const unauthRole = new iam.Role(this, 'WorldLensUnauthRole', {
+      assumedBy: new iam.FederatedPrincipal(
+        'cognito-identity.amazonaws.com',
+        {
+          StringEquals: {
+            'cognito-identity.amazonaws.com:aud': identityPool.ref,
+          },
+          'ForAnyValue:StringLike': {
+            'cognito-identity.amazonaws.com:amr': 'unauthenticated',
+          },
+        },
+        'sts:AssumeRoleWithWebIdentity'
+      ),
+    });
+
+    const authRole = new iam.Role(this, 'WorldLensAuthRole', {
+      assumedBy: new iam.FederatedPrincipal(
+        'cognito-identity.amazonaws.com',
+        {
+          StringEquals: {
+            'cognito-identity.amazonaws.com:aud': identityPool.ref,
+          },
+          'ForAnyValue:StringLike': {
+            'cognito-identity.amazonaws.com:amr': 'authenticated',
+          },
+        },
+        'sts:AssumeRoleWithWebIdentity'
+      ),
+    });
+
+    unauthRole.addToPolicy(bedrockPolicy);
+    authRole.addToPolicy(bedrockPolicy);
+
+    new cognito.CfnIdentityPoolRoleAttachment(this, 'WorldLensIdentityPoolRoles', {
+      identityPoolId: identityPool.ref,
+      roles: {
+        authenticated: authRole.roleArn,
+        unauthenticated: unauthRole.roleArn,
+      },
     });
 
     // ─── Lambda Functions ─────────────────────────────────────────────
@@ -196,6 +248,18 @@ export class WorldLensStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'SessionsTableName', {
       value: sessionsTable.tableName,
       description: 'DynamoDB sessions table name',
+    });
+
+    new cdk.CfnOutput(this, 'CognitoIdentityPoolId', {
+      value: identityPool.ref,
+      description: 'Cognito Identity Pool ID for browser auth',
+      exportName: 'WorldLensIdentityPoolId',
+    });
+
+    new cdk.CfnOutput(this, 'BedrockRegion', {
+      value: bedrockRegion,
+      description: 'Bedrock region for Nova Sonic',
+      exportName: 'WorldLensBedrockRegion',
     });
 
     new cdk.CfnOutput(this, 'DevUserAccessKeyId', {
