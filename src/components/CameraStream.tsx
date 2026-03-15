@@ -184,7 +184,7 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
 
   // Update analyserRef when prop changes
   useEffect(() => {
-    analyserRef.current = analyser;
+    analyserRef.current = analyser ?? null;
   }, [analyser]);
 
   return (
