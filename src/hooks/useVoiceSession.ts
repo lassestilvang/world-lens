@@ -28,6 +28,8 @@ export interface UseVoiceSessionReturn {
   eventLog: VoiceEvent[];
   /** Audio analyzer node for VAD */
   analyzer: AnalyserNode | null;
+  /** Whether the session is grounded and ready for interaction */
+  isGrounded: boolean;
   /** Current error */
   error: string | null;
 }
@@ -42,6 +44,7 @@ export function useVoiceSession(
   const [lastResponse, setLastResponse] = useState('');
   const [lastToolCall, setLastToolCall] = useState<{ name: string; input: Record<string, unknown>; toolUseId: string } | null>(null);
   const [eventLog, setEventLog] = useState<VoiceEvent[]>([]);
+  const [isGrounded, setIsGrounded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [analyzer, setAnalyzer] = useState<AnalyserNode | null>(null);
   const sessionRef = useRef<VoiceSession | null>(null);
@@ -103,7 +106,7 @@ export function useVoiceSession(
             break;
 
           case 'sessionStarted':
-            // Session ready
+            setIsGrounded(true);
             break;
 
           case 'text':
@@ -152,6 +155,7 @@ export function useVoiceSession(
     }
     setIsConnected(false);
     setIsCapturing(false);
+    setIsGrounded(false);
   }, []);
 
   const toggleCapture = useCallback(async () => {
@@ -201,6 +205,7 @@ export function useVoiceSession(
     sendToolResult,
     isConnected,
     isCapturing,
+    isGrounded,
     transcript,
     lastResponse,
     lastToolCall,

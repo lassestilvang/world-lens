@@ -28,6 +28,8 @@ export default function Page() {
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const handledToolCalls = useRef<Set<string>>(new Set());
+  const greetingSentRef = useRef<boolean>(false);
+  const lastSpokenObservationRef = useRef<string>('');
 
   // Session ID — stable across the session lifecycle
   const sessionIdRef = useRef<string>('');

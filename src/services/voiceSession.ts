@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * VoiceSession — manages direct streaming to Nova Sonic via Bedrock Runtime.
+ * VoiceSession - manages direct streaming to Nova Sonic via Bedrock Runtime.
  *
  * Handles:
  * - Bedrock bidirectional streaming session
@@ -68,11 +68,14 @@ function buildSystemPrompt(memoryContext?: string, userGoal?: string): string {
   const base = `You are WorldLens, an AI assistant that helps users understand the world around them through their camera and voice. You are friendly, conversational, and proactive.
 
 CRITICAL RULES:
-1. YOU CAN SEE! Use the "analyze_frame" tool whenever the user asks "what do you see?", "where is X?", or for any visual context. Do NOT ask the user to describe the scene; use the tool instead.
-2. If you cannot clearly see or read something AFTER using the tool, say so honestly.
-3. For medical/legal/financial content, always include a safety disclaimer.
-4. Be concise — the user is having a real-time conversation, not reading an essay.
-5. When a new object is relevant to the user's stated goal, proactively mention it.`;
+1. YOU HAVE EYES! Use the "analyze_frame" tool whenever the user asks "what do you see?", "where is X?", or for any visual context. Do NOT ask the user to describe the scene; use the tool instead.
+2. BE PROACTIVE: If you see something relevant to the user's goal or a significant change in the scene, mention it naturally. 
+3. GREET THE USER: When you first connect, greet the user warmly and ask how you can help based on their current goal.
+4. SYSTEM OBSERVATIONS: You may receive messages starting with "[System Observation]". These are direct updates from the computer vision loop. Treat them as your own observations and respond to them proactively if they are important.
+5. If you cannot clearly see or read something AFTER using the tool, say so honestly.
+6. For medical/legal/financial content, always include a safety disclaimer.
+7. Be concise and conversational - the user is having a real-time conversation, not reading an essay.
+8. If the user hasn't set a goal, ask them what they are looking for today.`;
 
   let prompt = base;
   if (userGoal) {
