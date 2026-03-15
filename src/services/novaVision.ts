@@ -64,9 +64,24 @@ async function callAnalyzeApi(image: string, mode: string, question?: string) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ image, mode, question }),
   });
+
   if (!response.ok) {
-    throw new Error(`Analysis API error: ${response.status}`);
+    // Try to extract the structured error from the API response
+    let errorMessage = `Analysis failed (${response.status})`;
+    let errorCode = 'UNKNOWN';
+    try {
+      const body = await response.json();
+      if (body.error) errorMessage = body.error;
+      if (body.code) errorCode = body.code;
+    } catch {
+      // body wasn't JSON — keep the generic message
+    }
+
+    const err = new Error(errorMessage);
+    (err as Error & { code: string }).code = errorCode;
+    throw err;
   }
+
   return response.json();
 }
 

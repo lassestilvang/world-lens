@@ -143,7 +143,65 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[/api/analyze] Error:', error);
 
-    const message = error instanceof Error ? error.message : 'Analysis failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    // Categorize the error for appropriate client response
+    const errorName = (error as { name?: string })?.name || '';
+    const errorMessage = error instanceof Error ? error.message : 'Analysis failed';
+
+    // AWS credential / auth errors
+    if (
+      errorName === 'CredentialsProviderError' ||
+      errorName === 'ExpiredTokenException' ||
+      errorMessage.includes('reauthenticate') ||
+      errorMessage.includes('expired') ||
+      errorMessage.includes('security token') ||
+      errorMessage.includes('credentials')
+    ) {
+      return NextResponse.json(
+        {
+          error: 'AWS credentials are missing or expired. Please reauthenticate.',
+          code: 'CREDENTIALS_ERROR',
+        },
+        { status: 401 }
+      );
+    }
+
+    // Throttling / rate-limit errors
+    if (
+      errorName === 'ThrottlingException' ||
+      errorName === 'TooManyRequestsException' ||
+      errorMessage.includes('Rate exceeded')
+    ) {
+      return NextResponse.json(
+        {
+          error: 'Too many requests — please wait a moment and try again.',
+          code: 'THROTTLED',
+        },
+        { status: 429 }
+      );
+    }
+
+    // Model / validation errors
+    if (
+      errorName === 'ValidationException' ||
+      errorName === 'ModelNotReadyException' ||
+      errorName === 'AccessDeniedException'
+    ) {
+      return NextResponse.json(
+        {
+          error: `Model error: ${errorMessage}`,
+          code: 'MODEL_ERROR',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Generic fallback
+    return NextResponse.json(
+      {
+        error: 'Analysis failed — please try again.',
+        code: 'INTERNAL_ERROR',
+      },
+      { status: 500 }
+    );
   }
 }

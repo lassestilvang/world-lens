@@ -26,6 +26,7 @@ export default function Page() {
   const [showDebug, setShowDebug] = useState<boolean>(true);
   const [lastAnalysis, setLastAnalysis] = useState<Record<string, unknown> | null>(null);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   // Session ID — stable across the session lifecycle
   const sessionIdRef = useRef<string>('');
@@ -59,6 +60,7 @@ export default function Page() {
   const onFrameCapture = useCallback(async (frameData: string) => {
     try {
       setIsProcessing(true);
+      setAnalysisError(null);
       const startTime = Date.now();
 
       let analysis;
@@ -124,7 +126,9 @@ export default function Page() {
         }
       }
     } catch (err) {
-      console.error('Error in orchestration loop:', err);
+      const message = err instanceof Error ? err.message : 'Analysis failed';
+      console.error('Error in orchestration loop:', message);
+      setAnalysisError(message);
     } finally {
       setIsProcessing(false);
     }
@@ -264,6 +268,23 @@ export default function Page() {
           lastAnalysis={lastAnalysis}
           latencyMs={latencyMs}
         />
+
+        {/* Analysis Error Banner */}
+        {analysisError && (
+          <div className="flex items-start gap-3 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-2xl">
+            <span className="text-red-400 text-lg leading-none mt-0.5">⚠️</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold uppercase tracking-widest text-red-400 mb-1">Error</p>
+              <p className="text-sm text-red-300 leading-snug">{analysisError}</p>
+            </div>
+            <button
+              onClick={() => setAnalysisError(null)}
+              className="text-red-500 hover:text-red-300 text-xs font-bold uppercase"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Status Footer */}
         <footer className="flex flex-col items-center gap-2 pb-4">
