@@ -128,8 +128,12 @@ export function useVoiceSession(sessionId: string): UseVoiceSessionReturn {
       sessionRef.current.stopCapture();
       setIsCapturing(false);
     } else {
-      await sessionRef.current.startCapture();
-      setIsCapturing(true);
+      try {
+        await sessionRef.current.startCapture();
+        setIsCapturing(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to start microphone capture');
+      }
     }
   }, [isCapturing]);
 

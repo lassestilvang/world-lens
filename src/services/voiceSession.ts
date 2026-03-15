@@ -52,6 +52,11 @@ export class VoiceSession {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 3;
   private reconnectDelay = 1000;
+  private sessionStarted = false;
+  private sessionStartedPromise: Promise<void> | null = null;
+  private sessionStartedResolve: (() => void) | null = null;
+  private sessionStartedReject: ((error: Error) => void) | null = null;
+  private sessionStartedTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(config: VoiceSessionConfig) {
     this.config = config;
@@ -79,6 +84,18 @@ export class VoiceSession {
    */
   async connect(): Promise<void> {
     return new Promise((resolve, reject) => {
+      this.sessionStarted = false;
+      if (this.sessionStartedTimeout) {
+        clearTimeout(this.sessionStartedTimeout);
+        this.sessionStartedTimeout = null;
+      }
+      this.sessionStartedResolve = null;
+      this.sessionStartedReject = null;
+      this.sessionStartedPromise = new Promise<void>((innerResolve, innerReject) => {
+        this.sessionStartedResolve = innerResolve;
+        this.sessionStartedReject = innerReject;
+      });
+
       const url = `${this.config.wsUrl}?sessionId=${encodeURIComponent(this.config.sessionId)}`;
       this.ws = new WebSocket(url);
 
@@ -88,13 +105,7 @@ export class VoiceSession {
         this.emit({ type: 'connected' });
 
         // Start a Sonic session
-        this.ws!.send(
-          JSON.stringify({
-            action: 'startSession',
-            sessionId: this.config.sessionId,
-            memoryContext: this.config.memoryContext,
-          })
-        );
+        this.sendStartSession();
 
         resolve();
       };
@@ -111,6 +122,14 @@ export class VoiceSession {
       this.ws.onerror = (error) => {
         console.error('[VoiceSession] WebSocket error:', error);
         this.emit({ type: 'error', error: 'WebSocket connection error' });
+        if (this.sessionStartedReject) {
+          this.sessionStartedReject(new Error('WebSocket connection error'));
+          this.sessionStartedReject = null;
+        }
+        if (this.sessionStartedTimeout) {
+          clearTimeout(this.sessionStartedTimeout);
+          this.sessionStartedTimeout = null;
+        }
         reject(error);
       };
 
@@ -118,6 +137,14 @@ export class VoiceSession {
         console.log('[VoiceSession] WebSocket closed');
         this.emit({ type: 'disconnected' });
         this.stopCapture();
+        if (this.sessionStartedReject) {
+          this.sessionStartedReject(new Error('WebSocket closed before session started'));
+          this.sessionStartedReject = null;
+        }
+        if (this.sessionStartedTimeout) {
+          clearTimeout(this.sessionStartedTimeout);
+          this.sessionStartedTimeout = null;
+        }
 
         // Auto-reconnect with exponential backoff
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
@@ -138,6 +165,15 @@ export class VoiceSession {
 
     switch (type) {
       case 'sessionStarted':
+        this.sessionStarted = true;
+        if (this.sessionStartedResolve) {
+          this.sessionStartedResolve();
+          this.sessionStartedResolve = null;
+        }
+        if (this.sessionStartedTimeout) {
+          clearTimeout(this.sessionStartedTimeout);
+          this.sessionStartedTimeout = null;
+        }
         this.emit({ type: 'sessionStarted' });
         break;
 
@@ -183,6 +219,14 @@ export class VoiceSession {
    */
   async startCapture(): Promise<void> {
     if (this.isCapturing) return;
+    if (!this.sessionStarted) {
+      try {
+        await this.awaitSessionStarted();
+      } catch (err) {
+        console.warn('[VoiceSession] Session start not confirmed, proceeding:', err);
+        this.sendStartSession();
+      }
+    }
 
     try {
       this.audioContext = new AudioContext({ sampleRate: 16000 });
@@ -293,6 +337,11 @@ export class VoiceSession {
   async disconnect(): Promise<void> {
     this.maxReconnectAttempts = 0; // Prevent reconnection
     this.stopCapture();
+    this.sessionStarted = false;
+    if (this.sessionStartedTimeout) {
+      clearTimeout(this.sessionStartedTimeout);
+      this.sessionStartedTimeout = null;
+    }
 
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ action: 'endSession' }));
@@ -308,6 +357,34 @@ export class VoiceSession {
 
   get capturing(): boolean {
     return this.isCapturing;
+  }
+
+  async awaitSessionStarted(timeoutMs = 15000): Promise<void> {
+    if (this.sessionStarted) return;
+    if (!this.sessionStartedPromise) {
+      throw new Error('Session not initialized');
+    }
+    if (timeoutMs > 0) {
+      this.sessionStartedTimeout = setTimeout(() => {
+        if (this.sessionStartedReject) {
+          this.sessionStartedReject(new Error('Session start timed out'));
+          this.sessionStartedReject = null;
+        }
+        this.sessionStartedTimeout = null;
+      }, timeoutMs);
+    }
+    return this.sessionStartedPromise;
+  }
+
+  private sendStartSession(): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    this.ws.send(
+      JSON.stringify({
+        action: 'startSession',
+        sessionId: this.config.sessionId,
+        memoryContext: this.config.memoryContext,
+      })
+    );
   }
 
   // ─── Audio Playback ──────────────────────────────────────────────────
