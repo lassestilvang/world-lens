@@ -22,6 +22,11 @@ export class FrameSampler {
 
     // Trigger on motion stabilization
     const isCurrentlyInMotion = motionLevel > this.motionThreshold;
+    if (isCurrentlyInMotion && !this.wasInMotion) {
+      // Capture when motion first appears so newly introduced objects
+      // can be analyzed without waiting for stabilization.
+      capture = true;
+    }
     if (!isCurrentlyInMotion && this.wasInMotion) {
       capture = true;
     }

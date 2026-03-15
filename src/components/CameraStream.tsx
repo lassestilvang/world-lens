@@ -10,6 +10,7 @@ export interface CameraStreamHandle {
 interface CameraStreamProps {
   onFrameCapture?: (frameData: string) => void;
   analyser?: AnalyserNode | null;
+  heartbeatIntervalMs?: number;
 }
 
 /**
@@ -48,7 +49,11 @@ function detectSpeech(analyser: AnalyserNode, threshold: number = 0.02): boolean
   return rms > threshold;
 }
 
-const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFrameCapture, analyser }, ref) => {
+const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({
+  onFrameCapture,
+  analyser,
+  heartbeatIntervalMs = 5000,
+}, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const prevFrameRef = useRef<ImageData | null>(null);
@@ -104,6 +109,8 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
         }
 
         // ─── Sampling loop (every 200ms) ───────────────────────────
+        const samplingTickMs = 200;
+        const heartbeatTicks = Math.max(1, Math.ceil(heartbeatIntervalMs / samplingTickMs));
         let heartbeatCounter = 0;
         intervalId = setInterval(() => {
           if (!samplerRef.current || !onFrameCapture || !videoRef.current) return;
@@ -150,10 +157,9 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
           // Use the FrameSampler to decide if we should capture
           let triggerCapture = samplerRef.current.shouldCapture(isSpeaking, motionLevel);
 
-          // Heartbeat sampling: capture every 5 seconds (25 ticks at 200ms) 
-          // to ensure we don't miss anything in a static scene.
+          // Heartbeat sampling ensures periodic captures even in static scenes.
           heartbeatCounter++;
-          if (heartbeatCounter >= 25) {
+          if (heartbeatCounter >= heartbeatTicks) {
             triggerCapture = true;
             heartbeatCounter = 0;
           }
@@ -163,7 +169,7 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
             onFrameCapture(frameDataUrl);
             heartbeatCounter = 0; // Reset on any capture
           }
-        }, 200);
+        }, samplingTickMs);
       } catch (err) {
         console.error('Error accessing camera.', err);
         setError('Unable to access camera');
@@ -180,7 +186,7 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
         clearInterval(intervalId);
       }
     };
-  }, [onFrameCapture, ref]);
+  }, [heartbeatIntervalMs, onFrameCapture, ref]);
 
   // Update analyserRef when prop changes
   useEffect(() => {

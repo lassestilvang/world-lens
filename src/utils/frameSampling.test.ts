@@ -16,8 +16,8 @@ describe('FrameSampler', () => {
   })
 
   it('captures frame when camera stabilizes after motion', () => {
-    // High motion, no capture
-    expect(sampler.shouldCapture(false, 10.0)).toBe(false)
+    // Motion starts, capture once to catch newly introduced objects.
+    expect(sampler.shouldCapture(false, 10.0)).toBe(true)
     expect(sampler.shouldCapture(false, 8.0)).toBe(false)
     
     // Motion drops below threshold, indicating stabilization

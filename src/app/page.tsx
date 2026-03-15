@@ -7,13 +7,15 @@ import DocumentOverlay from '../components/DocumentOverlay';
 import DebugPanel from '../components/DebugPanel';
 import { analyzeFrame, analyzeDocument, analyzeEnvironment, SceneAnalysis, EnvironmentAnalysis } from '../services/novaVision';
 import { evaluateProactiveSuggestion } from '../services/orchestrator';
-import { generateSpeechResponse } from '../services/novaSonic';
 import { optimizeMemory, addObservationToMemory, buildMemoryContext } from '../utils/memoryContext';
 import { playEarcon } from '../services/earconService';
 import { suggestModeFromScene } from '../utils/modeDetection';
 import { isImmediateHazard } from '../utils/safetyInterrupt';
 import { handleServiceError } from '../services/fallbackHandler';
 import { useVoiceSession } from '../hooks/useVoiceSession';
+import { findGoalObjectMatch } from '../utils/goalMatching';
+
+const PROACTIVE_OBSERVATION_COOLDOWN_MS = 8_000;
 
 export default function Page() {
   const [mode, setMode] = useState<AssistantMode>('grocery');
@@ -29,7 +31,7 @@ export default function Page() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const handledToolCalls = useRef<Set<string>>(new Set());
   const greetingSentRef = useRef<boolean>(false);
-  const lastSpokenObservationRef = useRef<string>('');
+  const lastSpokenObservationRef = useRef<{ text: string; timestamp: number }>({ text: '', timestamp: 0 });
 
   // Session ID — stable across the session lifecycle
   const sessionIdRef = useRef<string>('');
@@ -99,32 +101,37 @@ export default function Page() {
       setLatencyMs(Date.now() - startTime);
       setLastAnalysis(analysis as unknown as Record<string, unknown>);
 
-      // Proactive Sight: If AI sees something related to the goal
-      const goalText = goalRef.current.toLowerCase().trim();
-      if (goalText) {
-        // @ts-ignore - analysis might be EnvironmentAnalysis or SceneAnalysis
-        const seenObjects = ((analysis.objects || analysis.safetyObjects || []) as string[]);
-        console.log('[Page] Proactive logic check:', { goalText, seenObjects });
-        const matches = seenObjects.filter(o => 
-          o.toLowerCase().includes(goalText) || goalText.includes(o.toLowerCase())
-        );
-        if (matches.length > 0) {
-           const observation = `[System Observation] I see the ${matches[0]} in view now!`;
-           if (lastSpokenObservationRef.current !== observation) {
-              lastSpokenObservationRef.current = observation;
-              voice.interrupt();
-              voice.sendText(observation);
-              console.info('[Page] Proactive Sight Observation sent:', observation);
-           }
-        }
-      }
-
       const objects = 'safetyObjects' in analysis
         ? (analysis as EnvironmentAnalysis).safetyObjects
         : 'objects' in analysis ? (analysis as SceneAnalysis).objects : [];
       const context = 'sceneContext' in analysis
         ? (analysis as EnvironmentAnalysis).sceneContext
         : 'environment' in analysis ? (analysis as SceneAnalysis).environment : '';
+      const sceneAnalysis: SceneAnalysis = {
+        objects,
+        text: 'text' in analysis ? (analysis as SceneAnalysis).text : '',
+        environment: context || 'unknown',
+      };
+
+      // Proactive Sight: If AI sees something related to the goal
+      const goalText = currentGoal.toLowerCase().trim();
+      if (goalText) {
+        const matchedObject = findGoalObjectMatch(goalText, objects);
+        if (matchedObject) {
+          const observation = `[System Observation] I can see ${matchedObject} in frame right now.`;
+          const now = Date.now();
+          const { text: previousObservation, timestamp: previousTimestamp } = lastSpokenObservationRef.current;
+          const isDuplicateWithinCooldown =
+            previousObservation === observation && now - previousTimestamp < PROACTIVE_OBSERVATION_COOLDOWN_MS;
+
+          if (!isDuplicateWithinCooldown) {
+            lastSpokenObservationRef.current = { text: observation, timestamp: now };
+            voice.interrupt();
+            voice.sendText(observation);
+            console.info('[Page] Proactive Sight Observation sent:', observation);
+          }
+        }
+      }
 
       // 1. Check for Immediate Hazards (Safety First)
       if (isImmediateHazard(objects)) {
@@ -158,19 +165,17 @@ export default function Page() {
       // 4. Proactive Advice
       if (currentGoal || currentMode === 'environment') {
         const suggestionResult = await evaluateProactiveSuggestion({
-          environment: context || 'unknown',
-          objects_seen: updatedMemory,
+          environment: sceneAnalysis.environment,
+          objects_seen: currentMemory,
           user_goal: currentGoal || 'stay safe',
-        }, analysis as SceneAnalysis);
+        }, sceneAnalysis);
 
         if (suggestionResult.shouldSuggest && suggestionResult.suggestionPrompt) {
           if (suggestionResult.suggestionPrompt !== currentLastSuggestion) {
             setLastSuggestion(suggestionResult.suggestionPrompt);
             playEarcon('chime');
-            await generateSpeechResponse(
-              suggestionResult.suggestionPrompt,
-              buildMemoryContext(updatedMemory)
-            );
+            voice.interrupt();
+            voice.sendText(`[System Observation] ${suggestionResult.suggestionPrompt}`);
           }
         }
       }
@@ -256,7 +261,11 @@ export default function Page() {
           className="aspect-[3/4] bg-zinc-900 rounded-3xl border border-zinc-800 flex items-center justify-center relative overflow-hidden shadow-2xl shadow-black/50"
           data-testid="camera-container"
         >
-          <CameraStream onFrameCapture={onFrameCapture} analyser={voice.analyzer} />
+          <CameraStream
+            onFrameCapture={onFrameCapture}
+            analyser={voice.analyzer}
+            heartbeatIntervalMs={goal.trim() ? 1500 : 5000}
+          />
 
           <DocumentOverlay active={mode === 'document'} status={isProcessing ? 'capturing' : 'searching'} />
 

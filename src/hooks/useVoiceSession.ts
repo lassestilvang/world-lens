@@ -148,7 +148,7 @@ export function useVoiceSession(
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start voice session');
     }
-  }, [sessionId, addEvent]);
+  }, [sessionId, addEvent, options]);
 
   const endSession = useCallback(async () => {
     if (sessionRef.current) {
