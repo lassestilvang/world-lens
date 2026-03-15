@@ -32,7 +32,10 @@ export interface UseVoiceSessionReturn {
   error: string | null;
 }
 
-export function useVoiceSession(sessionId: string): UseVoiceSessionReturn {
+export function useVoiceSession(
+  sessionId: string,
+  options?: { memoryContext?: string; userGoal?: string }
+): UseVoiceSessionReturn {
   const [isConnected, setIsConnected] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -72,6 +75,8 @@ export function useVoiceSession(sessionId: string): UseVoiceSessionReturn {
         bedrockRegion,
         identityRegion,
         identityPoolId,
+        memoryContext: options?.memoryContext,
+        userGoal: options?.userGoal,
       };
 
       const session = new VoiceSession(config);
