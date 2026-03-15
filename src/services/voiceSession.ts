@@ -37,6 +37,7 @@ export interface VoiceSessionConfig {
   identityRegion?: string;
   identityPoolId?: string;
   voiceId?: string;
+  userGoal?: string;
 }
 
 export type VoiceEventType =
@@ -63,7 +64,7 @@ export interface VoiceEvent {
 
 type VoiceEventCallback = (event: VoiceEvent) => void;
 
-function buildSystemPrompt(memoryContext?: string): string {
+function buildSystemPrompt(memoryContext?: string, userGoal?: string): string {
   const base = `You are WorldLens, an AI assistant that helps users understand the world around them through their camera and voice. You are friendly, concise, and proactive.
 
 CRITICAL RULES:
@@ -72,10 +73,14 @@ CRITICAL RULES:
 3. Be concise — the user is having a real-time conversation, not reading an essay.
 4. When a new object is relevant to the user's stated goal, proactively mention it.`;
 
-  if (memoryContext) {
-    return `${base}\n\nCurrent World Memory:\n${memoryContext}`;
+  let prompt = base;
+  if (userGoal) {
+    prompt += `\n\nCURRENT USER GOAL: ${userGoal}`;
   }
-  return base;
+  if (memoryContext) {
+    prompt += `\n\nCurrent World Memory:\n${memoryContext}`;
+  }
+  return prompt;
 }
 
 function createId(prefix: string): string {
@@ -636,7 +641,7 @@ export class VoiceSession {
    * AsyncIterable input stream for the bidirectional API.
    */
   private async *inputStream(): AsyncIterable<InvokeModelWithBidirectionalStreamInput> {
-    const systemPrompt = buildSystemPrompt(this.config.memoryContext);
+    const systemPrompt = buildSystemPrompt(this.config.memoryContext, this.config.userGoal);
     const systemContentName = createId('system');
 
     yield this.encodeInput(createSessionStartEvent());
