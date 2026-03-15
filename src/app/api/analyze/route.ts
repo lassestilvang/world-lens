@@ -15,7 +15,6 @@ function defaultNovaLiteInferenceProfileId(region: string): string {
 const NOVA_LITE_MODEL_ID =
   process.env.NOVA_LITE_INFERENCE_PROFILE_ID || defaultNovaLiteInferenceProfileId(REGION);
 
-// Use custom environment variables for Amplify compatibility (avoids "AWS_" prefix restriction)
 const client = new BedrockRuntimeClient({
   region: REGION,
   credentials:
@@ -99,7 +98,6 @@ ${baseRules}`;
 }
 
 export async function POST(request: NextRequest) {
-  // Runtime check for environment variables in Amplify
   if (!process.env.WORLDLENS_AWS_ACCESS_KEY_ID || !process.env.WORLDLENS_AWS_SECRET_ACCESS_KEY) {
     console.error('[/api/analyze] Missing custom credentials in process.env');
     return NextResponse.json(
@@ -109,7 +107,6 @@ export async function POST(request: NextRequest) {
         debug: {
           hasAccessKey: !!process.env.WORLDLENS_AWS_ACCESS_KEY_ID,
           hasSecretKey: !!process.env.WORLDLENS_AWS_SECRET_ACCESS_KEY,
-          availableKeys: Object.keys(process.env).filter(k => k.includes('WORLDLENS')),
         },
       },
       { status: 500 }
@@ -127,15 +124,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Mode is required' }, { status: 400 });
     }
 
-    // Strip the data URL prefix if present (e.g., "data:image/jpeg;base64,")
-    const base64Data = body.image.includes(',')
-      ? body.image.split(',')[1]
-      : body.image;
-
+    const base64Data = body.image.includes(',') ? body.image.split(',')[1] : body.image;
     const imageBytes = Buffer.from(base64Data, 'base64');
 
     const command = new ConverseCommand({
       modelId: NOVA_LITE_MODEL_ID,
+      system: [{ text: getPromptForMode(body.mode, body.question) }],
       messages: [
         {
           role: 'user',
@@ -147,38 +141,31 @@ export async function POST(request: NextRequest) {
               },
             },
             {
-              text: getPromptForMode(body.mode, body.question),
+              text: 'Analyze this image according to the rules.',
             },
           ],
         },
       ],
       inferenceConfig: {
-        maxTokens: 1024,
+        maxTokens: 512,
         temperature: 0.2,
       },
     });
 
     const response = await client.send(command);
 
-    // Extract the text response from Converse API
-    const textContent = response.output?.message?.content?.find(
-      (c) => 'text' in c
-    );
+    const textContent = response.output?.message?.content?.find((c) => 'text' in c);
     const responseText = textContent && 'text' in textContent ? textContent.text : '';
 
-    // Try to parse as JSON, fall back to raw text
     let parsed;
     try {
-      // Try direct parse first
       parsed = JSON.parse(responseText || '{}');
     } catch {
       try {
-        // Strip markdown code fences (```json ... ```)
         const stripped = responseText?.replace(/```(?:json)?\s*/g, '').replace(/```\s*/g, '').trim();
         parsed = JSON.parse(stripped || '{}');
       } catch {
         try {
-          // Last resort: regex extraction of first JSON object
           const jsonMatch = responseText?.match(/\{[\s\S]*\}/);
           parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : { raw: responseText };
         } catch {
@@ -191,11 +178,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[/api/analyze] Error:', error);
 
-    // Categorize the error for appropriate client response
     const errorName = (error as { name?: string })?.name || '';
     const errorMessage = error instanceof Error ? error.message : 'Analysis failed';
 
-    // AWS credential / auth errors
     if (
       errorName === 'CredentialsProviderError' ||
       errorName === 'ExpiredTokenException' ||
@@ -208,13 +193,11 @@ export async function POST(request: NextRequest) {
         {
           error: 'AWS credentials are missing or expired. Please reauthenticate.',
           code: 'CREDENTIALS_ERROR',
-          debug: { name: errorName, message: errorMessage },
         },
         { status: 401 }
       );
     }
 
-    // Throttling / rate-limit errors
     if (
       errorName === 'ThrottlingException' ||
       errorName === 'TooManyRequestsException' ||
@@ -229,7 +212,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Model / validation errors
     if (
       errorName === 'ValidationException' ||
       errorName === 'ModelNotReadyException' ||
@@ -244,7 +226,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generic fallback
     return NextResponse.json(
       {
         error: 'Analysis failed — please try again.',
