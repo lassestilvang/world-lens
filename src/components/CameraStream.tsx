@@ -111,9 +111,24 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
           const video = videoRef.current;
           if (video.videoWidth === 0 || video.videoHeight === 0) return;
 
-          const canvas = canvasRef.current!;
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+
+          // Downscale for performance (max 1024px on either side)
+          const MAX_DIM = 1024;
+          let width = video.videoWidth;
+          let height = video.videoHeight;
+          if (width > MAX_DIM || height > MAX_DIM) {
+            if (width > height) {
+              height = Math.round((height * MAX_DIM) / width);
+              width = MAX_DIM;
+            } else {
+              width = Math.round((width * MAX_DIM) / height);
+              height = MAX_DIM;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
 
           // willReadFrequently optimization
           const ctx = canvas.getContext('2d', { willReadFrequently: true });
