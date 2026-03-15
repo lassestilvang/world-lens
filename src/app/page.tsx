@@ -27,6 +27,7 @@ export default function Page() {
   const [lastAnalysis, setLastAnalysis] = useState<Record<string, unknown> | null>(null);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const handledToolCalls = useRef<Set<string>>(new Set());
 
   // Session ID — stable across the session lifecycle
   const sessionIdRef = useRef<string>('');
@@ -163,6 +164,10 @@ export default function Page() {
   useEffect(() => {
     if (voice.lastToolCall) {
       const { name, input, toolUseId } = voice.lastToolCall;
+      
+      if (handledToolCalls.current.has(toolUseId)) return;
+      handledToolCalls.current.add(toolUseId);
+      
       console.log(`[Page] Handling Tool Call: ${name}`, { input, toolUseId });
 
       if (name === 'analyze_frame') {
