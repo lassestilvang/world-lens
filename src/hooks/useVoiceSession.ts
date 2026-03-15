@@ -74,6 +74,13 @@ export function useVoiceSession(sessionId: string): UseVoiceSessionReturn {
       const session = new VoiceSession(config);
       sessionRef.current = session;
 
+      const appendWithSpace = (prev: string, next: string) => {
+        if (!prev) return next;
+        if (!next) return prev;
+        const needsSpace = !/\s$/.test(prev) && !/^\s/.test(next);
+        return needsSpace ? `${prev} ${next}` : `${prev}${next}`;
+      };
+
       session.onEvent((event: VoiceEvent) => {
         addEvent(event);
 
@@ -93,8 +100,13 @@ export function useVoiceSession(sessionId: string): UseVoiceSessionReturn {
 
           case 'text':
             if (event.text) {
-              setTranscript((prev) => prev + event.text);
-              setLastResponse(event.text);
+              setLastResponse((prev) => appendWithSpace(prev, event.text));
+            }
+            break;
+
+          case 'transcript':
+            if (event.text) {
+              setTranscript((prev) => appendWithSpace(prev, event.text));
             }
             break;
 
@@ -108,8 +120,6 @@ export function useVoiceSession(sessionId: string): UseVoiceSessionReturn {
             break;
 
           case 'turnComplete':
-            // Reset transcript for next turn
-            setTranscript('');
             break;
 
           case 'error':

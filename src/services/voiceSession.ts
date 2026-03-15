@@ -1067,8 +1067,9 @@ export class VoiceSession {
 
   private async playAudio(pcmData: ArrayBuffer): Promise<void> {
     try {
+      const sourceSampleRate = 16000;
       if (!this.playbackContext) {
-        this.playbackContext = new AudioContext();
+        this.playbackContext = new AudioContext({ sampleRate: sourceSampleRate });
         this.nextPlaybackTime = this.playbackContext.currentTime;
       }
       const ctx = this.playbackContext;
@@ -1080,11 +1081,29 @@ export class VoiceSession {
       const float32 = new Float32Array(int16.length);
 
       for (let i = 0; i < int16.length; i++) {
-        float32[i] = int16[i] / 0x7fff;
+        const sample = int16[i] / 32768;
+        float32[i] = Math.max(-1, Math.min(1, sample));
       }
 
-      const audioBuffer = ctx.createBuffer(1, float32.length, 16000);
-      audioBuffer.getChannelData(0).set(float32);
+      const targetSampleRate = ctx.sampleRate || sourceSampleRate;
+      let samples = float32;
+
+      if (targetSampleRate !== sourceSampleRate && float32.length > 1) {
+        const ratio = targetSampleRate / sourceSampleRate;
+        const resampledLength = Math.max(1, Math.round(float32.length * ratio));
+        const resampled = new Float32Array(resampledLength);
+        for (let i = 0; i < resampledLength; i++) {
+          const position = i / ratio;
+          const left = Math.floor(position);
+          const right = Math.min(left + 1, float32.length - 1);
+          const weight = position - left;
+          resampled[i] = float32[left] * (1 - weight) + float32[right] * weight;
+        }
+        samples = resampled;
+      }
+
+      const audioBuffer = ctx.createBuffer(1, samples.length, targetSampleRate);
+      audioBuffer.getChannelData(0).set(samples);
 
       const source = ctx.createBufferSource();
       source.buffer = audioBuffer;
