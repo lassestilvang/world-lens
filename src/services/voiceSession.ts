@@ -288,6 +288,16 @@ export class VoiceSession {
     });
     const credentials = await credentialsProvider();
 
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('[VoiceSession] Credentials', {
+        accessKeyId: credentials.accessKeyId?.slice(-4),
+        hasSessionToken: Boolean(credentials.sessionToken),
+        expiration: credentials.expiration instanceof Date
+          ? credentials.expiration.toISOString()
+          : credentials.expiration,
+      });
+    }
+
     this.client = new BedrockRuntimeClient({
       region: bedrockRegion,
       credentials,
@@ -346,6 +356,10 @@ export class VoiceSession {
       }
     } catch (error) {
       console.error('[VoiceSession] Stream error:', error);
+      if (error && typeof error === 'object' && '$response' in error) {
+        // @ts-expect-error debug logging
+        console.error('[VoiceSession] Response', error.$response);
+      }
       this.emit({
         type: 'error',
         error: error instanceof Error ? error.message : 'Unknown streaming error',
