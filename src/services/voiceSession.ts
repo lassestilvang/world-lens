@@ -256,13 +256,31 @@ export class VoiceSession {
     const bedrockRegion =
       this.config.bedrockRegion ||
       process.env.NEXT_PUBLIC_BEDROCK_REGION ||
-      process.env.NEXT_PUBLIC_AWS_REGION;
+      process.env.NEXT_PUBLIC_AWS_REGION ||
+      'us-east-1';
     if (!bedrockRegion) {
       throw new Error('Missing Bedrock region (NEXT_PUBLIC_BEDROCK_REGION or NEXT_PUBLIC_AWS_REGION)');
     }
 
+    const identityRegionFromPool = identityPoolId.includes(':')
+      ? identityPoolId.split(':')[0]
+      : undefined;
     const identityRegion =
-      this.config.identityRegion || process.env.NEXT_PUBLIC_AWS_REGION || bedrockRegion;
+      this.config.identityRegion ||
+      identityRegionFromPool ||
+      process.env.NEXT_PUBLIC_AWS_REGION ||
+      bedrockRegion;
+    if (!identityRegion) {
+      throw new Error('Missing Cognito identity region');
+    }
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('[VoiceSession] Regions', {
+        bedrockRegion,
+        identityRegion,
+        identityPoolId,
+      });
+    }
 
     const credentialsProvider = fromCognitoIdentityPool({
       clientConfig: { region: identityRegion },

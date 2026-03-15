@@ -46,7 +46,12 @@ export function useVoiceSession(sessionId: string): UseVoiceSessionReturn {
 
   const startSession = useCallback(async () => {
     const identityPoolId = process.env.NEXT_PUBLIC_COGNITO_IDENTITY_POOL_ID;
-    const bedrockRegion = process.env.NEXT_PUBLIC_BEDROCK_REGION || process.env.NEXT_PUBLIC_AWS_REGION;
+    const bedrockRegion =
+      process.env.NEXT_PUBLIC_BEDROCK_REGION || process.env.NEXT_PUBLIC_AWS_REGION || 'us-east-1';
+    const identityRegion =
+      identityPoolId && identityPoolId.includes(':')
+        ? identityPoolId.split(':')[0]
+        : process.env.NEXT_PUBLIC_AWS_REGION || bedrockRegion;
     if (!identityPoolId) {
       setError('Cognito Identity Pool ID not configured (NEXT_PUBLIC_COGNITO_IDENTITY_POOL_ID)');
       return;
@@ -61,6 +66,9 @@ export function useVoiceSession(sessionId: string): UseVoiceSessionReturn {
 
       const config: VoiceSessionConfig = {
         sessionId,
+        bedrockRegion,
+        identityRegion,
+        identityPoolId,
       };
 
       const session = new VoiceSession(config);
