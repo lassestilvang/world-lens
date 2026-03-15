@@ -17,7 +17,15 @@ import {
   type InvokeModelWithBidirectionalStreamInput,
   type InvokeModelWithBidirectionalStreamOutput,
 } from '@aws-sdk/client-bedrock-runtime';
-import { fromCognitoIdentityPool } from '@aws-sdk/credential-providers';
+import {
+  CognitoIdentityClient,
+  GetIdCommand,
+  GetOpenIdTokenCommand,
+} from '@aws-sdk/client-cognito-identity';
+import {
+  AssumeRoleWithWebIdentityCommand,
+  STSClient,
+} from '@aws-sdk/client-sts';
 
 const SONIC_MODEL_ID =
   process.env.NEXT_PUBLIC_SONIC_MODEL_ID || 'amazon.nova-2-sonic-v1:0';
@@ -75,6 +83,81 @@ function createId(prefix: string): string {
     return `${prefix}-${crypto.randomUUID()}`;
   }
   return `${prefix}-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+}
+
+type AwsCredentials = {
+  accessKeyId: string;
+  secretAccessKey: string;
+  sessionToken?: string;
+  expiration?: Date;
+};
+
+function createClassicCognitoCredentialProvider(config: {
+  identityPoolId: string;
+  identityRegion: string;
+  unauthRoleArn: string;
+}): () => Promise<AwsCredentials> {
+  let cached: AwsCredentials | null = null;
+  let refreshing: Promise<AwsCredentials> | null = null;
+
+  const isExpired = (expiration?: Date) => {
+    if (!expiration) return true;
+    return expiration.getTime() - Date.now() < 60_000;
+  };
+
+  return async () => {
+    if (cached && !isExpired(cached.expiration)) {
+      return cached;
+    }
+    if (refreshing) return refreshing;
+
+    refreshing = (async () => {
+      const cognito = new CognitoIdentityClient({ region: config.identityRegion });
+      const sts = new STSClient({ region: config.identityRegion });
+
+      const { IdentityId } = await cognito.send(
+        new GetIdCommand({ IdentityPoolId: config.identityPoolId })
+      );
+      if (!IdentityId) {
+        throw new Error('Failed to resolve Cognito IdentityId');
+      }
+
+      const { Token } = await cognito.send(
+        new GetOpenIdTokenCommand({ IdentityId })
+      );
+      if (!Token) {
+        throw new Error('Failed to acquire Cognito OpenId token');
+      }
+
+      const assume = await sts.send(
+        new AssumeRoleWithWebIdentityCommand({
+          RoleArn: config.unauthRoleArn,
+          RoleSessionName: `cognito-identity-${IdentityId}`,
+          WebIdentityToken: Token,
+        })
+      );
+
+      const creds = assume.Credentials;
+      if (!creds?.AccessKeyId || !creds.SecretAccessKey) {
+        throw new Error('Failed to assume role with web identity');
+      }
+
+      cached = {
+        accessKeyId: creds.AccessKeyId,
+        secretAccessKey: creds.SecretAccessKey,
+        sessionToken: creds.SessionToken,
+        expiration: creds.Expiration,
+      };
+
+      return cached;
+    })();
+
+    try {
+      return await refreshing;
+    } finally {
+      refreshing = null;
+    }
+  };
 }
 
 function getSonicTools() {
@@ -409,17 +492,25 @@ export class VoiceSession {
       throw new Error('Missing Cognito identity region');
     }
 
+    const unauthRoleArn =
+      process.env.NEXT_PUBLIC_COGNITO_UNAUTH_ROLE_ARN;
+    if (!unauthRoleArn) {
+      throw new Error('Missing Cognito unauth role ARN (NEXT_PUBLIC_COGNITO_UNAUTH_ROLE_ARN)');
+    }
+
     if (process.env.NODE_ENV !== 'production') {
       console.info('[VoiceSession] Regions', {
         bedrockRegion,
         identityRegion,
         identityPoolId,
+        unauthRoleArn,
       });
     }
 
-    const credentialsProvider = fromCognitoIdentityPool({
-      clientConfig: { region: identityRegion },
+    const credentialsProvider = createClassicCognitoCredentialProvider({
       identityPoolId,
+      identityRegion,
+      unauthRoleArn,
     });
     const credentials = await credentialsProvider();
 

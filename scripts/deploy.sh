@@ -79,6 +79,7 @@ echo "⚙️  Step 2/3: Configuring environment..."
 WS_URL=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.WebSocketUrl || '')")
 SESSIONS_TABLE=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.SessionsTableName || 'WorldLensSessions')")
 IDENTITY_POOL_ID=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.CognitoIdentityPoolId || '')")
+UNAUTH_ROLE_ARN=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.CognitoUnauthRoleArn || '')")
 BEDROCK_REGION=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.BedrockRegion || '')")
 ACCESS_KEY_ID=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.DevUserAccessKeyId || '')")
 SECRET_ACCESS_KEY=$(node -e "const o = require('./cdk-outputs.json'); console.log(o.WorldLensStack?.DevUserSecretAccessKey || '')")
@@ -100,6 +101,12 @@ if [ -z "$IDENTITY_POOL_ID" ]; then
     echo "⚠️  Warning: Cognito Identity Pool ID not found in CDK outputs"
 else
     echo "   ✓ Cognito Identity Pool ID: $IDENTITY_POOL_ID"
+fi
+
+if [ -z "$UNAUTH_ROLE_ARN" ]; then
+    echo "⚠️  Warning: Cognito unauth role ARN not found in CDK outputs"
+else
+    echo "   ✓ Cognito unauth role ARN: $UNAUTH_ROLE_ARN"
 fi
 
 if [ -z "$BEDROCK_REGION" ]; then
@@ -126,6 +133,7 @@ AWS_ACCESS_KEY_ID=$ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY=$SECRET_ACCESS_KEY
 NEXT_PUBLIC_AWS_REGION=$REGION
 NEXT_PUBLIC_COGNITO_IDENTITY_POOL_ID=$IDENTITY_POOL_ID
+NEXT_PUBLIC_COGNITO_UNAUTH_ROLE_ARN=$UNAUTH_ROLE_ARN
 NEXT_PUBLIC_BEDROCK_REGION=$BEDROCK_REGION
 NEXT_PUBLIC_SONIC_MODEL_ID=amazon.nova-2-sonic-v1:0
 NOVA_LITE_INFERENCE_PROFILE_ID=$NOVA_LITE_PROFILE_ID

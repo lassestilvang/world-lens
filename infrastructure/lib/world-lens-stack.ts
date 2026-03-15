@@ -107,6 +107,12 @@ export class WorldLensStack extends cdk.Stack {
     unauthRole.addToPolicy(bedrockPolicy);
     authRole.addToPolicy(bedrockPolicy);
 
+    // Temporary: attach managed Bedrock access to debug Cognito auth failures.
+    // We'll remove this once confirmed.
+    const bedrockManagedPolicy = iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonBedrockFullAccess');
+    unauthRole.addManagedPolicy(bedrockManagedPolicy);
+    authRole.addManagedPolicy(bedrockManagedPolicy);
+
     new cognito.CfnIdentityPoolRoleAttachment(this, 'WorldLensIdentityPoolRoles', {
       identityPoolId: identityPool.ref,
       roles: {
@@ -268,6 +274,12 @@ export class WorldLensStack extends cdk.Stack {
       value: identityPool.ref,
       description: 'Cognito Identity Pool ID for browser auth',
       exportName: 'WorldLensIdentityPoolId',
+    });
+
+    new cdk.CfnOutput(this, 'CognitoUnauthRoleArn', {
+      value: unauthRole.roleArn,
+      description: 'Cognito unauth role ARN for browser auth',
+      exportName: 'WorldLensUnauthRoleArn',
     });
 
     new cdk.CfnOutput(this, 'BedrockRegion', {
