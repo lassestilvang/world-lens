@@ -100,13 +100,15 @@ export function useVoiceSession(sessionId: string): UseVoiceSessionReturn {
 
           case 'text':
             if (event.text) {
-              setLastResponse((prev) => appendWithSpace(prev, event.text));
+              const text = event.text;
+              setLastResponse((prev) => appendWithSpace(prev, text));
             }
             break;
 
           case 'transcript':
             if (event.text) {
-              setTranscript((prev) => appendWithSpace(prev, event.text));
+              const text = event.text;
+              setTranscript((prev) => appendWithSpace(prev, text));
             }
             break;
 
