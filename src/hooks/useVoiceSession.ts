@@ -14,6 +14,8 @@ export interface UseVoiceSessionReturn {
   sendText: (text: string) => void;
   /** Send a tool result back to Sonic */
   sendToolResult: (toolUseId: string, result: string) => void;
+  /** Interrupt current playback */
+  interrupt: () => void;
   /** Whether connected to the WebSocket */
   isConnected: boolean;
   /** Whether microphone is capturing */
@@ -188,6 +190,42 @@ export function useVoiceSession(
     }
   }, []);
 
+  const interrupt = useCallback(() => {
+    if (sessionRef.current) {
+      sessionRef.current.interrupt();
+    }
+  }, []);
+
+  // Barge-in check (VAD)
+  useEffect(() => {
+    if (!isCapturing || !analyzer || !isConnected) return;
+
+    let rafId: number;
+    const buffer = new Uint8Array(analyzer.fftSize);
+    const threshold = 50; // Simple threshold for barge-in
+
+    const checkVolume = () => {
+      analyzer.getByteTimeDomainData(buffer);
+      let maxVal = 0;
+      for (let i = 0; i < buffer.length; i++) {
+        const val = Math.abs(buffer[i] - 128);
+        if (val > maxVal) maxVal = val;
+      }
+
+      if (maxVal > threshold) {
+        // User is speaking, trigger local interrupt
+        const session = sessionRef.current;
+        if (session) {
+           session.interrupt();
+        }
+      }
+      rafId = requestAnimationFrame(checkVolume);
+    };
+
+    rafId = requestAnimationFrame(checkVolume);
+    return () => cancelAnimationFrame(rafId);
+  }, [isCapturing, analyzer, isConnected]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -203,6 +241,7 @@ export function useVoiceSession(
     toggleCapture,
     sendText,
     sendToolResult,
+    interrupt,
     isConnected,
     isCapturing,
     isGrounded,

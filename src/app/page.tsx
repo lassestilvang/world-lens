@@ -112,6 +112,7 @@ export default function Page() {
            const observation = `[System Observation] I see the ${matches[0]} in view now!`;
            if (lastSpokenObservationRef.current !== observation) {
               lastSpokenObservationRef.current = observation;
+              voice.interrupt();
               voice.sendText(observation);
               console.info('[Page] Proactive Sight Observation sent:', observation);
            }
@@ -129,6 +130,7 @@ export default function Page() {
       if (isImmediateHazard(objects)) {
         const hazard = objects.find((o: string) => o.includes('red') || o.includes('obstacle'));
         setLastSuggestion(`Hazard Detected: ${hazard}`);
+        voice.interrupt();
         playEarcon('chime');
       }
 

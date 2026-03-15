@@ -452,6 +452,7 @@ export class VoiceSession {
   private nextPlaybackTime = 0;
   private contentRoles = new Map<string, { role?: string; type?: string }>();
   private analyzer: AnalyserNode | null = null;
+  private activeSources: Set<AudioBufferSourceNode> = new Set();
 
   constructor(config: VoiceSessionConfig) {
     this.config = config;
@@ -1015,6 +1016,31 @@ export class VoiceSession {
   }
 
   /**
+   * Interrupt current audio playback and clear pending queues.
+   */
+  interrupt(): void {
+    console.info('[VoiceSession] Interrupting playback...');
+    
+    // Stop all currently playing audio sources
+    this.activeSources.forEach((source) => {
+      try {
+        source.stop();
+      } catch (err) {
+        // Source might have already ended or not started
+      }
+      source.disconnect();
+    });
+    this.activeSources.clear();
+
+    // Reset playback timeline
+    if (this.playbackContext) {
+      this.nextPlaybackTime = this.playbackContext.currentTime;
+    }
+    
+    this.emit({ type: 'text', text: '[Interrupted]' });
+  }
+
+  /**
    * Disconnect and clean up.
    */
   async disconnect(): Promise<void> {
@@ -1145,11 +1171,15 @@ export class VoiceSession {
       const source = ctx.createBufferSource();
       source.buffer = audioBuffer;
       source.connect(ctx.destination);
+      
+      this.activeSources.add(source);
+      
       const startTime = Math.max(ctx.currentTime, this.nextPlaybackTime);
       source.start(startTime);
       this.nextPlaybackTime = startTime + audioBuffer.duration;
 
       source.onended = () => {
+        this.activeSources.delete(source);
         if (this.playbackContext && this.nextPlaybackTime < this.playbackContext.currentTime) {
           this.nextPlaybackTime = this.playbackContext.currentTime;
         }
