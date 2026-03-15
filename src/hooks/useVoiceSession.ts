@@ -26,6 +26,8 @@ export interface UseVoiceSessionReturn {
   lastToolCall: { name: string; input: Record<string, unknown> } | null;
   /** Voice events log (last 20) */
   eventLog: VoiceEvent[];
+  /** Audio analyzer node for VAD */
+  analyzer: AnalyserNode | null;
   /** Current error */
   error: string | null;
 }
@@ -38,6 +40,7 @@ export function useVoiceSession(sessionId: string): UseVoiceSessionReturn {
   const [lastToolCall, setLastToolCall] = useState<{ name: string; input: Record<string, unknown> } | null>(null);
   const [eventLog, setEventLog] = useState<VoiceEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [analyzer, setAnalyzer] = useState<AnalyserNode | null>(null);
   const sessionRef = useRef<VoiceSession | null>(null);
 
   const addEvent = useCallback((event: VoiceEvent) => {
@@ -151,10 +154,12 @@ export function useVoiceSession(sessionId: string): UseVoiceSessionReturn {
     if (isCapturing) {
       sessionRef.current.stopCapture();
       setIsCapturing(false);
+      setAnalyzer(null);
     } else {
       try {
         await sessionRef.current.startCapture();
         setIsCapturing(true);
+        setAnalyzer(sessionRef.current.analyzerNode);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to start microphone capture');
       }
@@ -194,6 +199,7 @@ export function useVoiceSession(sessionId: string): UseVoiceSessionReturn {
     lastResponse,
     lastToolCall,
     eventLog,
+    analyzer,
     error,
   };
 }

@@ -9,6 +9,7 @@ export interface CameraStreamHandle {
 
 interface CameraStreamProps {
   onFrameCapture?: (frameData: string) => void;
+  analyser?: AnalyserNode | null;
 }
 
 /**
@@ -47,7 +48,7 @@ function detectSpeech(analyser: AnalyserNode, threshold: number = 0.02): boolean
   return rms > threshold;
 }
 
-const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFrameCapture }, ref) => {
+const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFrameCapture, analyser }, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const prevFrameRef = useRef<ImageData | null>(null);
@@ -102,7 +103,8 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
           canvasRef.current = document.createElement('canvas');
         }
 
-        // ─── Sampling loop (every 500ms) ───────────────────────────
+        // ─── Sampling loop (every 200ms) ───────────────────────────
+        let heartbeatCounter = 0;
         intervalId = setInterval(() => {
           if (!samplerRef.current || !onFrameCapture || !videoRef.current) return;
 
@@ -113,7 +115,8 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
 
-          const ctx = canvas.getContext('2d');
+          // willReadFrequently optimization
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
           if (!ctx) return;
 
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -130,11 +133,22 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
           const isSpeaking = analyserRef.current ? detectSpeech(analyserRef.current) : false;
 
           // Use the FrameSampler to decide if we should capture
-          if (samplerRef.current.shouldCapture(isSpeaking, motionLevel)) {
+          let triggerCapture = samplerRef.current.shouldCapture(isSpeaking, motionLevel);
+
+          // Heartbeat sampling: capture every 5 seconds (25 ticks at 200ms) 
+          // to ensure we don't miss anything in a static scene.
+          heartbeatCounter++;
+          if (heartbeatCounter >= 25) {
+            triggerCapture = true;
+            heartbeatCounter = 0;
+          }
+
+          if (triggerCapture) {
             const frameDataUrl = canvas.toDataURL('image/jpeg', 0.8);
             onFrameCapture(frameDataUrl);
+            heartbeatCounter = 0; // Reset on any capture
           }
-        }, 500);
+        }, 200);
       } catch (err) {
         console.error('Error accessing camera.', err);
         setError('Unable to access camera');
@@ -152,6 +166,11 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({ onFram
       }
     };
   }, [onFrameCapture, ref]);
+
+  // Update analyserRef when prop changes
+  useEffect(() => {
+    analyserRef.current = analyser;
+  }, [analyser]);
 
   return (
     <div className="relative w-full h-full">

@@ -172,7 +172,7 @@ export default function Page() {
           className="aspect-[3/4] bg-zinc-900 rounded-3xl border border-zinc-800 flex items-center justify-center relative overflow-hidden shadow-2xl shadow-black/50"
           data-testid="camera-container"
         >
-          <CameraStream onFrameCapture={onFrameCapture} />
+          <CameraStream onFrameCapture={onFrameCapture} analyser={voice.analyzer} />
 
           <DocumentOverlay active={mode === 'document'} status={isProcessing ? 'capturing' : 'searching'} />
 

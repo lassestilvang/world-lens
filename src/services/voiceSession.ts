@@ -442,6 +442,7 @@ export class VoiceSession {
   private playbackContext: AudioContext | null = null;
   private nextPlaybackTime = 0;
   private contentRoles = new Map<string, { role?: string; type?: string }>();
+  private analyzer: AnalyserNode | null = null;
 
   constructor(config: VoiceSessionConfig) {
     this.config = config;
@@ -792,6 +793,12 @@ export class VoiceSession {
       });
 
       const source = this.audioContext.createMediaStreamSource(this.mediaStream);
+      
+      // Create and connect analyzer for VAD
+      const analyzer = this.audioContext.createAnalyser();
+      analyzer.fftSize = 512;
+      source.connect(analyzer);
+      this.analyzer = analyzer;
 
       // Use ScriptProcessor for wider browser compatibility (AudioWorklet preferred in production)
       const bufferSize = 4096;
@@ -836,6 +843,11 @@ export class VoiceSession {
     if (this.mediaStream) {
       this.mediaStream.getTracks().forEach((track) => track.stop());
       this.mediaStream = null;
+    }
+
+    if (this.analyzer) {
+      this.analyzer.disconnect();
+      this.analyzer = null;
     }
 
     if (this.audioContext && this.audioContext.state !== 'closed') {
@@ -1028,6 +1040,10 @@ export class VoiceSession {
 
   get capturing(): boolean {
     return this.isCapturing;
+  }
+
+  get analyzerNode(): AnalyserNode | null {
+    return this.analyzer;
   }
 
   private encodeInput(event: object): InvokeModelWithBidirectionalStreamInput {
