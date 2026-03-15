@@ -40,7 +40,10 @@ export class WorldLensStack extends cdk.Stack {
     const bedrockRegion = props.bedrockRegion;
     const sonicModelArn = 'arn:aws:bedrock:*::foundation-model/amazon.nova-2-sonic-v1:0';
     const liteModelArn = 'arn:aws:bedrock:*::foundation-model/amazon.nova-2-lite-v1:0';
-    const inferenceProfileArn = 'arn:aws:bedrock:*::inference-profile/*';
+    const inferenceProfileArns = [
+      'arn:aws:bedrock:*:*:inference-profile/*',
+      'arn:aws:bedrock:*::inference-profile/*',
+    ];
 
     const lambdaEnvironment: Record<string, string> = {
       SESSIONS_TABLE: sessionsTable.tableName,
@@ -60,7 +63,7 @@ export class WorldLensStack extends cdk.Stack {
       resources: [
         sonicModelArn,
         liteModelArn,
-        inferenceProfileArn,
+        ...inferenceProfileArns,
       ],
     });
 
