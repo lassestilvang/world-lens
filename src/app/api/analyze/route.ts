@@ -5,7 +5,8 @@ const client = new BedrockRuntimeClient({
   region: 'us-east-1',
 });
 
-const NOVA_LITE_MODEL_ID = 'amazon.nova-2-lite-v1:0';
+const NOVA_LITE_MODEL_ID =
+  process.env.NOVA_LITE_INFERENCE_PROFILE_ARN || 'amazon.nova-2-lite-v1:0';
 
 interface AnalyzeRequest {
   image: string; // base64-encoded JPEG

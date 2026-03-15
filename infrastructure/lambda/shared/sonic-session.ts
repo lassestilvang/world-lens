@@ -5,7 +5,8 @@ import {
 
 const client = new BedrockRuntimeClient({ region: 'us-east-1' });
 
-const SONIC_MODEL_ID = 'amazon.nova-2-sonic-v1:0';
+const SONIC_MODEL_ID =
+  process.env.SONIC_INFERENCE_PROFILE_ARN || 'amazon.nova-2-sonic-v1:0';
 
 export interface SonicToolDefinition {
   toolName: string;
