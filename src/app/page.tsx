@@ -222,6 +222,20 @@ export default function Page() {
     }
   }, [voice.lastToolCall, lastAnalysis, voice.sendToolResult]);
 
+  // Handle Initial Greeting
+  useEffect(() => {
+    if (voice.isGrounded && !greetingSentRef.current) {
+      greetingSentRef.current = true;
+      const currentGoal = goalRef.current;
+      const greeting = currentGoal 
+        ? `Hello! I'm grounded and ready to help you with ${currentGoal}. What should I look for?`
+        : "Hello! I'm ready to help. What are we looking for today?";
+      voice.sendText(greeting);
+    } else if (!voice.isConnected) {
+      greetingSentRef.current = false;
+    }
+  }, [voice.isGrounded, voice.isConnected, voice.sendText]);
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-zinc-950 text-white relative overflow-hidden safe-area-padding">
       <div className="w-full max-w-md flex flex-col gap-4 z-10">
