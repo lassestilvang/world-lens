@@ -129,10 +129,11 @@ function createClassicCognitoCredentialProvider(config: {
         throw new Error('Failed to acquire Cognito OpenId token');
       }
 
+      const safeSessionName = `cognito-identity-${IdentityId}`.replace(/[^\\w+=,.@-]/g, '-');
       const assume = await sts.send(
         new AssumeRoleWithWebIdentityCommand({
           RoleArn: config.unauthRoleArn,
-          RoleSessionName: `cognito-identity-${IdentityId}`,
+          RoleSessionName: safeSessionName,
           WebIdentityToken: Token,
         })
       );
@@ -436,10 +437,13 @@ export class VoiceSession {
   private sessionStarted = false;
   private promptName: string;
   private audioContentName: string | null = null;
+  private keepaliveTimer: ReturnType<typeof setInterval> | null = null;
+  private lastInputAt = 0;
 
   constructor(config: VoiceSessionConfig) {
     this.config = config;
     this.promptName = config.sessionId || createId('prompt');
+    this.lastInputAt = Date.now();
   }
 
   /**
@@ -558,6 +562,7 @@ export class VoiceSession {
     this.emit({ type: 'connected' });
 
     this.streamTask = this.startStream();
+    this.startKeepalive();
   }
 
   /**
@@ -618,6 +623,7 @@ export class VoiceSession {
     } finally {
       this.isActive = false;
       this.sessionStarted = false;
+      this.stopKeepalive();
       this.emit({ type: 'disconnected' });
     }
   }
@@ -630,6 +636,7 @@ export class VoiceSession {
     const systemContentName = createId('system');
 
     yield this.encodeInput(createSessionStartEvent());
+    this.markInputSent();
     yield this.encodeInput(
       createPromptStartEvent({
         promptName: this.promptName,
@@ -637,6 +644,7 @@ export class VoiceSession {
         voiceId: this.config.voiceId,
       })
     );
+    this.markInputSent();
     yield this.encodeInput(
       createContentStartEvent({
         promptName: this.promptName,
@@ -646,6 +654,7 @@ export class VoiceSession {
         role: 'SYSTEM',
       })
     );
+    this.markInputSent();
     yield this.encodeInput(
       createTextEvent({
         promptName: this.promptName,
@@ -653,12 +662,14 @@ export class VoiceSession {
         text: systemPrompt,
       })
     );
+    this.markInputSent();
     yield this.encodeInput(
       createContentEndEvent({
         promptName: this.promptName,
         contentName: systemContentName,
       })
     );
+    this.markInputSent();
 
     while (this.isActive || this.inputQueue.length > 0) {
       if (this.inputQueue.length > 0) {
@@ -799,6 +810,7 @@ export class VoiceSession {
           })
         )
       );
+      this.markInputSent();
       this.resolveInput?.();
       this.audioContentName = null;
     }
@@ -822,6 +834,7 @@ export class VoiceSession {
           })
         )
       );
+      this.markInputSent();
     }
 
     this.inputQueue.push(
@@ -833,6 +846,7 @@ export class VoiceSession {
         })
       )
     );
+    this.markInputSent();
     this.resolveInput?.();
   }
 
@@ -857,6 +871,7 @@ export class VoiceSession {
         })
       )
     );
+    this.markInputSent();
     this.inputQueue.push(
       this.encodeInput(
         createTextEvent({
@@ -866,6 +881,7 @@ export class VoiceSession {
         })
       )
     );
+    this.markInputSent();
     this.inputQueue.push(
       this.encodeInput(
         createContentEndEvent({
@@ -874,6 +890,7 @@ export class VoiceSession {
         })
       )
     );
+    this.markInputSent();
     this.resolveInput?.();
   }
 
@@ -895,6 +912,7 @@ export class VoiceSession {
         })
       )
     );
+    this.markInputSent();
     this.inputQueue.push(
       this.encodeInput(
         createToolResultEvent({
@@ -904,6 +922,7 @@ export class VoiceSession {
         })
       )
     );
+    this.markInputSent();
     this.inputQueue.push(
       this.encodeInput(
         createContentEndEvent({
@@ -912,6 +931,7 @@ export class VoiceSession {
         })
       )
     );
+    this.markInputSent();
     this.resolveInput?.();
   }
 
@@ -930,10 +950,13 @@ export class VoiceSession {
             })
           )
         );
+        this.markInputSent();
         this.audioContentName = null;
       }
       this.inputQueue.push(this.encodeInput(createPromptEndEvent(this.promptName)));
+      this.markInputSent();
       this.inputQueue.push(this.encodeInput(createEndSessionEvent()));
+      this.markInputSent();
       this.resolveInput?.();
     }
 
@@ -963,6 +986,29 @@ export class VoiceSession {
     const json = JSON.stringify(event);
     const bytes = new TextEncoder().encode(json);
     return { chunk: { bytes } };
+  }
+
+  private markInputSent(): void {
+    this.lastInputAt = Date.now();
+  }
+
+  private startKeepalive(): void {
+    if (this.keepaliveTimer) return;
+    const intervalMs = 20_000;
+    this.keepaliveTimer = setInterval(() => {
+      if (!this.isActive) return;
+      if (Date.now() - this.lastInputAt < intervalMs) return;
+      // Send a short silence frame to keep the session alive.
+      const silence = new Int16Array(160);
+      this.sendAudio(silence);
+    }, intervalMs);
+  }
+
+  private stopKeepalive(): void {
+    if (this.keepaliveTimer) {
+      clearInterval(this.keepaliveTimer);
+      this.keepaliveTimer = null;
+    }
   }
 
   // ─── Audio Playback ──────────────────────────────────────────────────
