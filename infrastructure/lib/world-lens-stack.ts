@@ -162,6 +162,21 @@ export class WorldLensStack extends cdk.Stack {
       `https://${webSocketApi.apiId}.execute-api.${this.region}.amazonaws.com/${stage.stageName}`
     );
 
+    // ─── Local Dev User ────────────────────────────────────────────────
+    // Automated Zero-Touch configuration for local development
+    
+    const devUser = new iam.User(this, 'LocalDevUser', {
+      userName: 'worldlens-dev-user',
+    });
+
+    devUser.addToPrincipalPolicy(bedrockPolicy);
+    sessionsTable.grantReadWriteData(devUser);
+    connectionsTable.grantReadWriteData(devUser);
+
+    const accessKey = new iam.CfnAccessKey(this, 'LocalDevAccessKey', {
+      userName: devUser.userName,
+    });
+
     // ─── Outputs ──────────────────────────────────────────────────────
 
     new cdk.CfnOutput(this, 'WebSocketUrl', {
@@ -180,9 +195,14 @@ export class WorldLensStack extends cdk.Stack {
       description: 'DynamoDB sessions table name',
     });
 
-    new cdk.CfnOutput(this, 'ConnectionsTableName', {
-      value: connectionsTable.tableName,
-      description: 'DynamoDB connections table name',
+    new cdk.CfnOutput(this, 'DevUserAccessKeyId', {
+      value: accessKey.ref,
+      description: 'Access Key ID for local development',
+    });
+
+    new cdk.CfnOutput(this, 'DevUserSecretAccessKey', {
+      value: accessKey.attrSecretAccessKey,
+      description: 'Secret Access Key for local development',
     });
   }
 }

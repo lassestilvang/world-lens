@@ -5,6 +5,8 @@ import { WorldLensStack } from '../lib/world-lens-stack';
 
 const app = new cdk.App();
 
+cdk.Tags.of(app).add('Project', 'WorldLens');
+
 new WorldLensStack(app, 'WorldLensStack', {
   env: {
     region: process.env.CDK_DEFAULT_REGION || 'us-east-1',
