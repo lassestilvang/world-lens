@@ -23,7 +23,7 @@ export interface UseVoiceSessionReturn {
   /** Last text response */
   lastResponse: string;
   /** Last tool call info */
-  lastToolCall: { name: string; input: Record<string, unknown> } | null;
+  lastToolCall: { name: string; input: Record<string, unknown>; toolUseId: string } | null;
   /** Voice events log (last 20) */
   eventLog: VoiceEvent[];
   /** Audio analyzer node for VAD */
@@ -40,7 +40,7 @@ export function useVoiceSession(
   const [isCapturing, setIsCapturing] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [lastResponse, setLastResponse] = useState('');
-  const [lastToolCall, setLastToolCall] = useState<{ name: string; input: Record<string, unknown> } | null>(null);
+  const [lastToolCall, setLastToolCall] = useState<{ name: string; input: Record<string, unknown>; toolUseId: string } | null>(null);
   const [eventLog, setEventLog] = useState<VoiceEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [analyzer, setAnalyzer] = useState<AnalyserNode | null>(null);
@@ -121,10 +121,11 @@ export function useVoiceSession(
             break;
 
           case 'toolUse':
-            if (event.toolName) {
+            if (event.toolName && event.toolUseId) {
               setLastToolCall({
                 name: event.toolName,
                 input: event.toolInput || {},
+                toolUseId: event.toolUseId,
               });
             }
             break;

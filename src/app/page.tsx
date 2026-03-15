@@ -162,14 +162,16 @@ export default function Page() {
   // Handle Tool Calls from Sonic
   useEffect(() => {
     if (voice.lastToolCall) {
-      const { name, input } = voice.lastToolCall;
+      const { name, input, toolUseId } = voice.lastToolCall;
+      console.log(`[Page] Handling Tool Call: ${name}`, { input, toolUseId });
 
       if (name === 'analyze_frame') {
         // Return the latest analysis context
         const context = lastAnalysis
           ? JSON.stringify(lastAnalysis)
           : 'No visual data available yet. Please wait for the next frame.';
-        voice.sendToolResult('analyze_frame', context);
+        console.log(`[Page] Returning Analysis Context:`, context);
+        voice.sendToolResult(toolUseId, context);
       } else if (name === 'update_memory') {
         const obs = (input.observations as string[]) || [];
         const newGoal = input.userGoal as string;
@@ -190,7 +192,7 @@ export default function Page() {
           setGoal(newGoal);
         }
 
-        voice.sendToolResult('update_memory', 'Memory and goals updated.');
+        voice.sendToolResult(toolUseId, 'Memory and goals updated.');
       }
     }
   }, [voice.lastToolCall, lastAnalysis, voice.sendToolResult]);

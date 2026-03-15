@@ -68,10 +68,11 @@ function buildSystemPrompt(memoryContext?: string, userGoal?: string): string {
   const base = `You are WorldLens, an AI assistant that helps users understand the world around them through their camera and voice. You are friendly, concise, and proactive.
 
 CRITICAL RULES:
-1. If you cannot clearly see or read something, say so honestly.
-2. For medical/legal/financial content, always include a safety disclaimer.
-3. Be concise — the user is having a real-time conversation, not reading an essay.
-4. When a new object is relevant to the user's stated goal, proactively mention it.`;
+1. YOU CAN SEE! Use the "analyze_frame" tool whenever the user asks "what do you see?", "where is X?", or for any visual context. Do NOT ask the user to describe the scene; use the tool instead.
+2. If you cannot clearly see or read something AFTER using the tool, say so honestly.
+3. For medical/legal/financial content, always include a safety disclaimer.
+4. Be concise — the user is having a real-time conversation, not reading an essay.
+5. When a new object is relevant to the user's stated goal, proactively mention it.`;
 
   let prompt = base;
   if (userGoal) {
@@ -695,7 +696,7 @@ export class VoiceSession {
   /**
    * Handle incoming events from the Bedrock stream.
    */
-  private processOutputEvent(event: Record<string, unknown>): void {
+  private processOutputEvent(event: any): void {
     try {
       const payload =
         event.event && typeof event.event === 'object'
@@ -760,13 +761,28 @@ export class VoiceSession {
         const toolData = payload.toolUse as {
           toolUseId?: string;
           name?: string;
-          input?: string;
+          toolName?: string;
+          input?: string | Record<string, unknown>;
         };
+        const name = toolData.name || toolData.toolName;
+        console.info('[VoiceSession] Tool Use received:', name, toolData.toolUseId, toolData);
+        
+        let parsedInput = {};
+        if (typeof toolData.input === 'string') {
+          try {
+            parsedInput = JSON.parse(toolData.input);
+          } catch {
+            parsedInput = { raw: toolData.input };
+          }
+        } else if (typeof toolData.input === 'object' && toolData.input !== null) {
+          parsedInput = toolData.input;
+        }
+
         this.emit({
           type: 'toolUse',
           toolUseId: toolData.toolUseId,
-          toolName: toolData.name,
-          toolInput: toolData.input ? JSON.parse(toolData.input) : {},
+          toolName: name || 'unknown',
+          toolInput: parsedInput as Record<string, unknown>,
         });
         return;
       }
