@@ -37,7 +37,10 @@ export default function Page() {
   }, []);
 
   // Voice session hook
-  const voice = useVoiceSession(sessionIdRef.current);
+  const voice = useVoiceSession(sessionIdRef.current, {
+    userGoal: goal,
+    memoryContext: buildMemoryContext(memory),
+  });
 
   // Refs for state accessed inside onFrameCapture — avoids stale closures
   // which would cause CameraStream to restart on every state change.
@@ -155,6 +158,42 @@ export default function Page() {
       setIsProcessing(false);
     }
   }, []); // Stable reference — reads state via refs
+
+  // Handle Tool Calls from Sonic
+  useEffect(() => {
+    if (voice.lastToolCall) {
+      const { name, input } = voice.lastToolCall;
+
+      if (name === 'analyze_frame') {
+        // Return the latest analysis context
+        const context = lastAnalysis
+          ? JSON.stringify(lastAnalysis)
+          : 'No visual data available yet. Please wait for the next frame.';
+        voice.sendToolResult('analyze_frame', context);
+      } else if (name === 'update_memory') {
+        const obs = (input.observations as string[]) || [];
+        const newGoal = input.userGoal as string;
+
+        if (obs.length > 0) {
+          setMemory((prev) => {
+            let updated = [...prev];
+            obs.forEach((o) => {
+              if (!updated.includes(o)) {
+                updated = addObservationToMemory(updated, o, 100);
+              }
+            });
+            return updated;
+          });
+        }
+
+        if (newGoal) {
+          setGoal(newGoal);
+        }
+
+        voice.sendToolResult('update_memory', 'Memory and goals updated.');
+      }
+    }
+  }, [voice.lastToolCall, lastAnalysis, voice.sendToolResult]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-zinc-950 text-white relative overflow-hidden safe-area-padding">
