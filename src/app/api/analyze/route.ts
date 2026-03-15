@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
 
-const REGION = process.env.AWS_REGION || 'us-east-1';
+const REGION = process.env.WORLDLENS_AWS_REGION || process.env.AWS_REGION || 'us-east-1';
 
 function defaultNovaLiteInferenceProfileId(region: string): string {
   if (region.startsWith('eu-')) return 'eu.amazon.nova-2-lite-v1:0';
@@ -15,8 +15,16 @@ function defaultNovaLiteInferenceProfileId(region: string): string {
 const NOVA_LITE_MODEL_ID =
   process.env.NOVA_LITE_INFERENCE_PROFILE_ID || defaultNovaLiteInferenceProfileId(REGION);
 
+// Use custom environment variables for Amplify compatibility (avoids "AWS_" prefix restriction)
 const client = new BedrockRuntimeClient({
   region: REGION,
+  credentials:
+    process.env.WORLDLENS_AWS_ACCESS_KEY_ID && process.env.WORLDLENS_AWS_SECRET_ACCESS_KEY
+      ? {
+          accessKeyId: process.env.WORLDLENS_AWS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.WORLDLENS_AWS_SECRET_ACCESS_KEY,
+        }
+      : undefined,
 });
 
 interface AnalyzeRequest {
