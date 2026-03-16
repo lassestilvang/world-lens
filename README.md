@@ -143,3 +143,9 @@ chmod +x scripts/teardown.sh
 - WorldLens is designed as an assistive tool, not a medical or safety-critical life-support system.
 - Images are processed in-memory and NOT stored by the backend.
 - Blurry or low-confidence results trigger a "Retry" prompt to avoid hallucinations in sensitive contexts (like medication dosage).
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
