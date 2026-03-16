@@ -79,13 +79,8 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       return canvas.toDataURL('image/jpeg', 0.8);
     },
-  }));
-
-  useEffect(() => {
-    samplerRef.current = new FrameSampler({ motionThreshold: 5.0 });
-
+  }));  useEffect(() => {
     let stream: MediaStream | null = null;
-    let intervalId: NodeJS.Timeout | null = null;
 
     async function setupCamera() {
       try {
@@ -107,69 +102,6 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({
         if (!canvasRef.current) {
           canvasRef.current = document.createElement('canvas');
         }
-
-        // ─── Sampling loop (every 200ms) ───────────────────────────
-        const samplingTickMs = 200;
-        const heartbeatTicks = Math.max(1, Math.ceil(heartbeatIntervalMs / samplingTickMs));
-        let heartbeatCounter = 0;
-        intervalId = setInterval(() => {
-          if (!samplerRef.current || !onFrameCapture || !videoRef.current) return;
-
-          const video = videoRef.current;
-          if (video.videoWidth === 0 || video.videoHeight === 0) return;
-
-          const canvas = canvasRef.current;
-          if (!canvas) return;
-
-          // Downscale for performance (max 1024px on either side)
-          const MAX_DIM = 1024;
-          let width = video.videoWidth;
-          let height = video.videoHeight;
-          if (width > MAX_DIM || height > MAX_DIM) {
-            if (width > height) {
-              height = Math.round((height * MAX_DIM) / width);
-              width = MAX_DIM;
-            } else {
-              width = Math.round((width * MAX_DIM) / height);
-              height = MAX_DIM;
-            }
-          }
-          canvas.width = width;
-          canvas.height = height;
-
-          // willReadFrequently optimization
-          const ctx = canvas.getContext('2d', { willReadFrequently: true });
-          if (!ctx) return;
-
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-          // Compute motion level
-          let motionLevel = 0;
-          if (prevFrameRef.current && prevFrameRef.current.data.length === currentFrame.data.length) {
-            motionLevel = computeMotionLevel(prevFrameRef.current, currentFrame);
-          }
-          prevFrameRef.current = currentFrame;
-
-          // Detect speech via VAD (only if an analyser is available)
-          const isSpeaking = analyserRef.current ? detectSpeech(analyserRef.current) : false;
-
-          // Use the FrameSampler to decide if we should capture
-          let triggerCapture = samplerRef.current.shouldCapture(isSpeaking, motionLevel);
-
-          // Heartbeat sampling ensures periodic captures even in static scenes.
-          heartbeatCounter++;
-          if (heartbeatCounter >= heartbeatTicks) {
-            triggerCapture = true;
-            heartbeatCounter = 0;
-          }
-
-          if (triggerCapture) {
-            const frameDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            onFrameCapture(frameDataUrl);
-            heartbeatCounter = 0; // Reset on any capture
-          }
-        }, samplingTickMs);
       } catch (err) {
         console.error('Error accessing camera.', err);
         setError('Unable to access camera');
@@ -182,11 +114,83 @@ const CameraStream = forwardRef<CameraStreamHandle, CameraStreamProps>(({
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    samplerRef.current = new FrameSampler({ motionThreshold: 5.0 });
+    let intervalId: NodeJS.Timeout | null = null;
+
+    // ─── Sampling loop (every 200ms) ───────────────────────────
+    const samplingTickMs = 200;
+    const heartbeatTicks = Math.max(1, Math.ceil(heartbeatIntervalMs / samplingTickMs));
+    let heartbeatCounter = 0;
+
+    intervalId = setInterval(() => {
+      if (!samplerRef.current || !onFrameCapture || !videoRef.current) return;
+
+      const video = videoRef.current;
+      if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      // Downscale for performance (max 1024px on either side)
+      const MAX_DIM = 1024;
+      let width = video.videoWidth;
+      let height = video.videoHeight;
+      if (width > MAX_DIM || height > MAX_DIM) {
+        if (width > height) {
+          height = Math.round((height * MAX_DIM) / width);
+          width = MAX_DIM;
+        } else {
+          width = Math.round((width * MAX_DIM) / height);
+          height = MAX_DIM;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+
+      // willReadFrequently optimization
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return;
+
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const currentFrame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      // Compute motion level
+      let motionLevel = 0;
+      if (prevFrameRef.current && prevFrameRef.current.data.length === currentFrame.data.length) {
+        motionLevel = computeMotionLevel(prevFrameRef.current, currentFrame);
+      }
+      prevFrameRef.current = currentFrame;
+
+      // Detect speech via VAD (only if an analyser is available)
+      const isSpeaking = analyserRef.current ? detectSpeech(analyserRef.current) : false;
+
+      // Use the FrameSampler to decide if we should capture
+      let triggerCapture = samplerRef.current.shouldCapture(isSpeaking, motionLevel);
+
+      // Heartbeat sampling ensures periodic captures even in static scenes.
+      heartbeatCounter++;
+      if (heartbeatCounter >= heartbeatTicks) {
+        triggerCapture = true;
+        heartbeatCounter = 0;
+      }
+
+      if (triggerCapture) {
+        const frameDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        onFrameCapture(frameDataUrl);
+        heartbeatCounter = 0; // Reset on any capture
+      }
+    }, samplingTickMs);
+
+    return () => {
       if (intervalId) {
         clearInterval(intervalId);
       }
     };
-  }, [heartbeatIntervalMs, onFrameCapture, ref]);
+  }, [heartbeatIntervalMs, onFrameCapture]);
 
   // Update analyserRef when prop changes
   useEffect(() => {

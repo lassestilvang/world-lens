@@ -226,6 +226,13 @@ export function useVoiceSession(
     return () => cancelAnimationFrame(rafId);
   }, [isCapturing, analyzer, isConnected]);
 
+  // Update Sonic on Goal Change
+  useEffect(() => {
+    if (isConnected && options?.userGoal && isGrounded) {
+      sendText(`[System Update] The user's goal has changed. The new goal is: "${options.userGoal}". Please acknowledge this and adjust your assistance accordingly.`);
+    }
+  }, [options?.userGoal, isConnected, isGrounded, sendText]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
