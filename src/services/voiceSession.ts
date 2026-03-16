@@ -1032,6 +1032,10 @@ export class VoiceSession {
    */
   private sendAudio(pcmData: Int16Array): void {
     if (!this.isActive) return;
+    
+    // FOR DEMO: Prevent the assistant from hearing itself on iOS
+    if (this.isSpeaking) return;
+
     if (!this.audioContentName) {
       this.audioContentName = createId('audio');
       this.inputQueue.push(
