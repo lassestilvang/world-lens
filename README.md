@@ -12,18 +12,17 @@ WorldLens uses a hybrid architecture to balance fast, static frontend delivery w
 graph TD
     Client[Next.js Web App] -->|HTTPS / POST| API_Routes[Next.js API Routes / Amplify]
     API_Routes -->|Vision/Grounding| Bedrock_Lite[Amazon Nova Lite]
+    API_Routes -->|State| DDB[DynamoDB]
     
-    Client <-->|WebSocket| APIGW[API Gateway WebSocket]
-    APIGW <-->|Connect/Disconnect/Message| Lambda[AWS Lambda / Node.js 22]
-    Lambda <-->|Bidirectional Stream| Bedrock_Sonic[Amazon Nova Sonic]
-    Lambda ---|State| DDB[DynamoDB]
+    Client <-->|SDK / Bidirectional Stream| Bedrock_Sonic[Amazon Nova Sonic]
+    Client -->|Auth| Cognito[Cognito Identity Pool]
 ```
 
 ### Key Components:
-- **Frontend (Next.js):** Hosted on AWS Amplify, providing a responsive UI with real-time VAD (Voice Activity Detection) and motion sensing.
-- **WebSocket Pipeline:** Dedicated AWS CDK infrastructure for low-latency, bidirectional audio streaming between the client and Nova Sonic.
-- **BFF (Backend-for-Frontend) API:** Server-side routes in Next.js to securely proxy Bedrock vision analysis and grounding requests.
-- **Real-Time Pipeline:** Lambda functions bridge the WebSocket API to the Amazon Bedrock streaming interface.
+- **Frontend (Next.js):** Hosted on AWS Amplify, providing a responsive UI with real-time VAD (Voice Activity Detection), motion sensing, and direct Bedrock streaming.
+- **Cognito Integration:** Provides temporary AWS credentials via an Identity Pool for secure browser-side access to Bedrock and S3.
+- **BFF (Backend-for-Frontend) API:** Server-side routes in Next.js to securely proxy Bedrock vision analysis, grounding requests, and DynamoDB state management.
+- **Real-Time Pipeline:** Direct bidirectional streaming between the client and Amazon Bedrock Sonic for sub-second voice latency.
 
 ---
 
