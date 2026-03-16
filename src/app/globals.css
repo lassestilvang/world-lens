@@ -5,6 +5,11 @@
   --color-foreground: #fafafa;
 }
 
+html, body {
+  background-color: #000000;
+  color: var(--color-foreground);
+}
+
 /* Safe area padding for iOS notch/home indicator */
 .safe-area-padding {
   padding-top: env(safe-area-inset-top, 16px);
