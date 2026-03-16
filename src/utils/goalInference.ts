@@ -18,18 +18,22 @@ export function inferGoalFromQuestion(question: string): string | null {
   ]);
 
   const patterns = [
-    /(?:where(?:'s| is)|find|locate|look for|spot|do you see)\s+(?:the|a|an|my)?\s*([a-z0-9][a-z0-9\s-]{1,40})/,
-    /(?:is there|can you see)\s+(?:the|a|an)?\s*([a-z0-9][a-z0-9\s-]{1,40})/,
+    /(?:where(?:'s| is)|find|locate|look for|spot|do you see|search for)\s+(?:the|a|an|my)?\s*([a-z0-9][a-z0-9\s-]{1,40})/,
+    /(?:is there|can you see|show me)\s+(?:the|a|an)?\s*([a-z0-9][a-z0-9\s-]{1,40})/,
+    // Fallback: Just capture the whole string if it's short and looks like an object
+    /^([a-z0-9][a-z0-9\s-]{1,40})$/,
   ];
 
   for (const pattern of patterns) {
     const match = normalized.match(pattern);
-    if (!match?.[1]) {
-      continue;
-    }
+    if (!match) continue;
+    
+    // Use the captured group, or the whole match for the fallback pattern
+    const rawMatch = match[1] || match[0];
+    if (!rawMatch) continue;
 
-    const cleaned = match[1]
-      .replace(/\b(in|on|at|for|near|around)\b.*$/, '')
+    const cleaned = rawMatch
+      .replace(/\b(in|on|at|for|near|around|to)\b.*$/, '')
       .replace(/[^a-z0-9\s-]/g, '')
       .trim();
 

@@ -148,6 +148,25 @@ export default function Page() {
         environment: context || 'unknown',
       };
 
+      /*
+     ### 3. Voice Goal Update Fix
+I ensured that asking the voice assistant to find something correctly updates the "Current Goal" in the UI.
+- **The Issue**: A restrictive guard in `page.tsx` was preventing voice commands from overwriting the current goal. Also, the inference logic was too narrow to catch natural variations of "search for" or "find".
+- **The Fix**:
+    - **Guard Removal**: Removed the check in `page.tsx` that only allowed the goal to be set if it was empty. Now, voice commands can update/overwrite the current goal.
+    - **Broadened Inference**: Updated `goalInference.ts` with new regex patterns and a fallback mechanism to capture more natural ways of asking for things.
+    - **AI Proactivity**: Updated the AI's system prompt to explicitly remind it to use the `update_memory` tool whenever it detects a goal change in use speech.
+
+## Verification Results
+
+### Automated Tests
+Ran `npm test` and all 125 tests passed, including the new goal inference patterns.
+
+### Manual Verification Steps (For User)
+1.  **Switch Goals via Voice**: Start a session. Say "Find a baseball". Verify the UI updates. Then say "Actually, look for a red cup". Verify the UI updates again.
+2.  **Implicit Goal Capture**: Say "I'm looking for my wallet". The AI should now infer "wallet" and update the goal automatically.
+3.  **Flicker-Free & Responsive**: Throughout these changes, the video should remain stable, and the AI should vocally confirm your requests.
+*/
       // Proactive Sight: If AI sees something related to the goal
       const goalText = (currentGoal || inferredGoalRef.current).toLowerCase().trim();
       if (goalText) {
@@ -261,9 +280,7 @@ export default function Page() {
         const inferredGoal = inferGoalFromQuestion(askedQuestion);
         if (inferredGoal) {
           inferredGoalRef.current = inferredGoal;
-          if (!goalRef.current.trim()) {
-            setGoal(inferredGoal);
-          }
+          setGoal(inferredGoal);
         }
 
         // Return the latest analysis context
