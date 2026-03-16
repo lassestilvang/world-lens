@@ -199,6 +199,8 @@ export function useVoiceSession(
     }
   }, []);
 
+  const lastInterruptRef = useRef<number>(0);
+
   // Barge-in check (VAD)
   useEffect(() => {
     if (!isCapturing || !analyzer || !isConnected) return;
@@ -214,7 +216,12 @@ export function useVoiceSession(
         analyzer.getByteFrequencyData(dataArray);
         const average = dataArray.reduce((p, c) => p + c, 0) / dataArray.length;
         
-        if (average > 30) {
+        // Only barge-in if assistant is actually speaking and user is loud enough
+        // This prevents ambient noise or the user's initial prompt from killing the AI's response turn
+        const now = Date.now();
+        if (sessionRef.current.isSpeaking && average > 60 && now - lastInterruptRef.current > 500) {
+           console.info(`[useVoiceSession] VAD Barge-in detected (avg: ${Math.round(average)})`);
+           lastInterruptRef.current = now;
            sessionRef.current.interrupt('vad_barge_in');
         }
       }
