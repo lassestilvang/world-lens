@@ -220,9 +220,9 @@ function createSessionStartEvent(config?: { sensitivity?: string }): object {
           topP: 0.9,
           temperature: 0.7,
         },
-        turnDetectionConfiguration: {
+        /* turnDetectionConfiguration: {
           endpointingSensitivity: config?.sensitivity || 'MEDIUM',
-        },
+        }, */
       },
     },
   };

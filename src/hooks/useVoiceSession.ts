@@ -235,12 +235,12 @@ export function useVoiceSession(
         const effectiveThreshold = isIOS ? 85 : 60;
         
         // Only barge-in if assistant is actually speaking and user is loud enough
-        // We add a safety buffer (1000ms) after playback starts OR after a previous interruption
-        if (currentlySpeaking && average > effectiveThreshold && now - lastInterruptRef.current > 1000) {
+        // DISABLED FOR DEMO:
+        /* if (currentlySpeaking && average > effectiveThreshold && now - lastInterruptRef.current > 1000) {
            console.info(`[useVoiceSession] VAD Barge-in detected (avg: ${Math.round(average)}, platform: ${isIOS ? 'iOS' : 'Other'})`);
            lastInterruptRef.current = now;
            sessionRef.current.interrupt('vad_barge_in');
-        }
+        } */
       }
       rafVolume = requestAnimationFrame(checkVolume);
     };
