@@ -16,13 +16,13 @@ const MODES: { id: AssistantMode; label: string; icon: string }[] = [
 
 export function ModeSelector({ currentMode, onModeChange }: ModeSelectorProps) {
   return (
-    <div className="flex bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-2xl p-1 gap-1 shadow-lg">
+    <div className="w-full flex bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-2xl p-1 gap-1 shadow-lg">
       {MODES.map((mode) => (
         <button
           key={mode.id}
           onClick={() => onModeChange(mode.id)}
-          className={`flex flex-col items-center justify-center py-2 px-3 rounded-xl transition-all duration-200 min-w-[72px] ${currentMode === mode.id
-              ? 'bg-blue-600 text-white shadow-md scale-105'
+          className={`flex-1 flex flex-col items-center justify-center py-2 px-3 rounded-xl transition-all duration-200 ${currentMode === mode.id
+              ? 'bg-blue-600 text-white shadow-md'
               : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'
             }`}
         >
