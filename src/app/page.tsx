@@ -91,6 +91,13 @@ export default function Page() {
       inferredGoalRef.current = trimmedGoal;
       setGoal(trimmedGoal);
       setInputValue('');
+
+      if (voice.isConnected && voice.isGrounded) {
+        voice.sendText(
+          `The user has manually set a goal: "${trimmedGoal}". Please acknowledge this and explain how you will help.`,
+          'SYSTEM'
+        );
+      }
     }
   };
 
@@ -298,10 +305,10 @@ export default function Page() {
     if (voice.isGrounded && !greetingSentRef.current) {
       greetingSentRef.current = true;
       const currentGoal = goalRef.current;
-      const greeting = currentGoal 
-        ? `Hello! I'm grounded and ready to help you with ${currentGoal}. What should I look for?`
-        : "Hello! I'm ready to help. What are we looking for today?";
-      voice.sendText(greeting);
+      const greetingInstruction = currentGoal 
+        ? `Please greet the user warmly. They have a goal: "${currentGoal}". Briefly acknowledge it and ask how you can assist.`
+        : "Please greet the user warmly and ask what they would like help with today.";
+      voice.sendText(greetingInstruction, 'SYSTEM');
     } else if (!voice.isConnected) {
       greetingSentRef.current = false;
     }

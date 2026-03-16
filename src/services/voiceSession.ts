@@ -1049,22 +1049,22 @@ export class VoiceSession {
   /**
    * Send a text message to the Sonic session.
    */
-  sendText(text: string): void {
+  sendText(text: string, role: 'USER' | 'SYSTEM' = 'USER'): void {
     if (!this.isActive) {
       this.emit({ type: 'error', error: 'Not connected' });
       return;
     }
 
     const contentName = createId('text');
-    console.info(`[VoiceSession] Sending text: "${text}"`);
+    console.info(`[VoiceSession] Sending text [${role}]: "${text}"`);
     this.inputQueue.push(
       this.encodeInput(
         createContentStartEvent({
           promptName: this.promptName,
           contentName,
           type: 'TEXT',
-          interactive: true,
-          role: 'USER',
+          interactive: role === 'USER',
+          role: role,
         })
       )
     );

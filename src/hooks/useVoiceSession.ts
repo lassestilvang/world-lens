@@ -10,8 +10,8 @@ export interface UseVoiceSessionReturn {
   endSession: () => Promise<void>;
   /** Toggle microphone capture */
   toggleCapture: () => Promise<void>;
-  /** Send text (fallback when mic unavailable) */
-  sendText: (text: string) => void;
+  /** Send text (fallback when mic unavailable or for system instructions) */
+  sendText: (text: string, role?: 'USER' | 'SYSTEM') => void;
   /** Send a tool result back to Sonic */
   sendToolResult: (toolUseId: string, result: string | Record<string, unknown>) => void;
   /** Interrupt current playback */
@@ -178,9 +178,9 @@ export function useVoiceSession(
     }
   }, [isCapturing]);
 
-  const sendText = useCallback((text: string) => {
+  const sendText = useCallback((text: string, role?: 'USER' | 'SYSTEM') => {
     if (sessionRef.current) {
-      sessionRef.current.sendText(text);
+      sessionRef.current.sendText(text, role);
     }
   }, []);
 
@@ -226,12 +226,6 @@ export function useVoiceSession(
     return () => cancelAnimationFrame(rafId);
   }, [isCapturing, analyzer, isConnected]);
 
-  // Update Sonic on Goal Change
-  useEffect(() => {
-    if (isConnected && options?.userGoal && isGrounded) {
-      sendText(`[System Update] The user's goal has changed. The new goal is: "${options.userGoal}". Please acknowledge this and adjust your assistance accordingly.`);
-    }
-  }, [options?.userGoal, isConnected, isGrounded, sendText]);
 
   // Cleanup on unmount
   useEffect(() => {
