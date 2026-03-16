@@ -1212,6 +1212,10 @@ export class VoiceSession {
     return this.analyzer;
   }
 
+  get isSpeaking(): boolean {
+    return this.activeSources.size > 0;
+  }
+
   private encodeInput(event: object): InvokeModelWithBidirectionalStreamInput {
     const json = JSON.stringify(event);
     const bytes = new TextEncoder().encode(json);

@@ -16,8 +16,8 @@ import { useVoiceSession } from '../hooks/useVoiceSession';
 import { findGoalObjectMatch } from '../utils/goalMatching';
 import { inferGoalFromQuestion } from '../utils/goalInference';
 
-const PROACTIVE_OBSERVATION_COOLDOWN_MS = 3_000;
-const OBJECT_REAPPEARANCE_MS = 1_500;
+const PROACTIVE_OBSERVATION_COOLDOWN_MS = 15_000;
+const OBJECT_REAPPEARANCE_MS = 10_000;
 
 export default function Page() {
   const [mode, setMode] = useState<AssistantMode>('grocery');
@@ -59,6 +59,7 @@ export default function Page() {
   const lastSuggestionRef = useRef(lastSuggestion);
   const modeRef = useRef(mode);
   const voiceConnectedRef = useRef(false);
+  const voiceSpeakingRef = useRef(false);
   useEffect(() => {
     goalRef.current = goal;
     if (goal.trim()) {
@@ -70,6 +71,9 @@ export default function Page() {
   useEffect(() => { modeRef.current = mode; }, [mode]);
   useEffect(() => {
     voiceConnectedRef.current = voice.isConnected;
+    voiceSpeakingRef.current = voice.isSpeaking;
+  }, [voice.isConnected, voice.isSpeaking]);
+  useEffect(() => {
     if (!voice.isConnected) {
       return;
     }
@@ -191,8 +195,15 @@ Ran `npm test` and all 125 tests passed, including the new goal inference patter
 
               if (voiceConnectedRef.current) {
                 lastSpokenObservationRef.current = { text: observation, timestamp: now };
-                voice.interrupt();
-                voice.sendText(`${observation} Please tell the user this immediately in one short sentence.`);
+                
+                // Only interrupt if not already speaking to avoid annoying mid-sentence breaks
+                if (!voiceSpeakingRef.current) {
+                  voice.interrupt();
+                  voice.sendText(`${observation} Please tell the user this immediately in one short sentence.`);
+                } else {
+                  // If speaking, just send the text so she can mention it after finishing or if she checks her history
+                  voice.sendText(`${observation} Mention this when you have a moment.`);
+                }
               } else {
                 pendingObservationRef.current = observation;
               }

@@ -32,6 +32,8 @@ export interface UseVoiceSessionReturn {
   analyzer: AnalyserNode | null;
   /** Whether the session is grounded and ready for interaction */
   isGrounded: boolean;
+  /** Whether the assistant is currently speaking */
+  isSpeaking: boolean;
   /** Current error */
   error: string | null;
 }
@@ -42,6 +44,7 @@ export function useVoiceSession(
 ): UseVoiceSessionReturn {
   const [isConnected, setIsConnected] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [lastResponse, setLastResponse] = useState('');
   const [lastToolCall, setLastToolCall] = useState<{ name: string; input: Record<string, unknown>; toolUseId: string } | null>(null);
@@ -200,30 +203,37 @@ export function useVoiceSession(
   useEffect(() => {
     if (!isCapturing || !analyzer || !isConnected) return;
 
-    let rafId: number;
+    let rafVolume: number;
+    let rafStatus: number;
     const buffer = new Uint8Array(analyzer.fftSize);
     const threshold = 50; // Simple threshold for barge-in
 
     const checkVolume = () => {
-      analyzer.getByteTimeDomainData(buffer);
-      let maxVal = 0;
-      for (let i = 0; i < buffer.length; i++) {
-        const val = Math.abs(buffer[i] - 128);
-        if (val > maxVal) maxVal = val;
-      }
-
-      if (maxVal > threshold) {
-        // User is speaking, trigger local interrupt
-        const session = sessionRef.current;
-        if (session) {
-           session.interrupt();
+      if (analyzer && sessionRef.current) {
+        const dataArray = new Uint8Array(analyzer.frequencyBinCount);
+        analyzer.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((p, c) => p + c, 0) / dataArray.length;
+        
+        if (average > 30) {
+           sessionRef.current.interrupt();
         }
       }
-      rafId = requestAnimationFrame(checkVolume);
+      rafVolume = requestAnimationFrame(checkVolume);
     };
+    rafVolume = requestAnimationFrame(checkVolume);
 
-    rafId = requestAnimationFrame(checkVolume);
-    return () => cancelAnimationFrame(rafId);
+    const checkStatus = () => {
+      if (sessionRef.current) {
+        setIsSpeaking(sessionRef.current.isSpeaking);
+      }
+      rafStatus = requestAnimationFrame(checkStatus);
+    };
+    rafStatus = requestAnimationFrame(checkStatus);
+
+    return () => {
+      cancelAnimationFrame(rafVolume);
+      cancelAnimationFrame(rafStatus);
+    };
   }, [isCapturing, analyzer, isConnected]);
 
 
@@ -246,6 +256,7 @@ export function useVoiceSession(
     isConnected,
     isCapturing,
     isGrounded,
+    isSpeaking,
     transcript,
     lastResponse,
     lastToolCall,
