@@ -311,11 +311,14 @@ export default function Page() {
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-zinc-950 text-white relative overflow-hidden safe-area-padding">
       <div className="w-full max-w-md flex flex-col gap-4 z-10">
         {/* Header */}
-        <header className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight">WorldLens</h1>
-          <p className="text-sm text-zinc-400 mt-1 tracking-wide uppercase font-semibold">
-            {mode} Mode
-          </p>
+        <header className="text-center flex flex-col items-center gap-2">
+          <img src="/logo.png" alt="WorldLens Logo" className="w-16 h-16 rounded-2xl shadow-lg border border-zinc-800" />
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">WorldLens</h1>
+            <p className="text-sm text-zinc-400 mt-1 tracking-wide uppercase font-semibold">
+              {mode} Mode
+            </p>
+          </div>
         </header>
 
         {/* Camera + Overlays */}
