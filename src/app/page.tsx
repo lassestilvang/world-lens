@@ -195,7 +195,7 @@ Ran `npm test` and all 125 tests passed, including the new goal inference patter
 
               if (voiceConnectedRef.current) {
                 lastSpokenObservationRef.current = { text: observation, timestamp: now };
-                
+
                 // Only interrupt if not already speaking to avoid annoying mid-sentence breaks
                 if (voiceSpeakingRef.current) {
                   console.info('[Page] Interrupting active AI speech for sighting');
@@ -258,12 +258,12 @@ Ran `npm test` and all 125 tests passed, including the new goal inference patter
             playEarcon('chime');
             if (voiceConnectedRef.current) {
               if (voiceSpeakingRef.current) {
-              console.info('[Page] Interrupting active AI speech for proactive advice');
-              voice.interrupt('proactive_advice');
-            }
-            voice.sendText(
-              `[System Observation] ${suggestionResult.suggestionPrompt} Please tell the user this immediately in one concise sentence.`
-            );
+                console.info('[Page] Interrupting active AI speech for proactive advice');
+                voice.interrupt('proactive_advice');
+              }
+              voice.sendText(
+                `[System Observation] ${suggestionResult.suggestionPrompt} Please tell the user this immediately in one concise sentence.`
+              );
             }
           }
         }
@@ -281,10 +281,10 @@ Ran `npm test` and all 125 tests passed, including the new goal inference patter
   useEffect(() => {
     if (voice.lastToolCall) {
       const { name, input, toolUseId } = voice.lastToolCall;
-      
+
       if (handledToolCalls.current.has(toolUseId)) return;
       handledToolCalls.current.add(toolUseId);
-      
+
       console.log(`[Page] Handling Tool Call: ${name}`, { input, toolUseId });
 
       if (name === 'analyze_frame') {
@@ -333,7 +333,7 @@ Ran `npm test` and all 125 tests passed, including the new goal inference patter
     if (voice.isGrounded && !greetingSentRef.current) {
       greetingSentRef.current = true;
       const currentGoal = goalRef.current;
-      const greetingInstruction = currentGoal 
+      const greetingInstruction = currentGoal
         ? `[System Observation] Please greet the user warmly. They have a goal: "${currentGoal}". Briefly acknowledge it and ask how you can assist.`
         : "[System Observation] Please greet the user warmly and ask what they would like help with today.";
       voice.sendText(greetingInstruction);
@@ -354,7 +354,7 @@ Ran `npm test` and all 125 tests passed, including the new goal inference patter
               {mode} Mode
             </p>
           </div>
-          
+
           {/* Status Indicator */}
           <div
             className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-zinc-950/50 rounded-full border border-zinc-800/50 backdrop-blur"
@@ -419,21 +419,17 @@ Ran `npm test` and all 125 tests passed, including the new goal inference patter
           </div>
         )}
 
-        {/* Mode Selector */}
-        <ModeSelector currentMode={mode} onModeChange={setMode} />
-
         {/* Voice Button + Text Input */}
         <div className="space-y-3">
           {/* Voice Mic Button */}
           <button
             onClick={handleVoiceToggle}
-            className={`w-full flex items-center justify-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all shadow-lg ${
-              voice.isCapturing
-                ? 'bg-red-600 hover:bg-red-500 shadow-red-900/30 animate-pulse-subtle'
-                : voice.isConnected
+            className={`w-full flex items-center justify-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all shadow-lg ${voice.isCapturing
+              ? 'bg-red-600 hover:bg-red-500 shadow-red-900/30 animate-pulse-subtle'
+              : voice.isConnected
                 ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/30'
                 : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/30'
-            }`}
+              }`}
             data-testid="voice-button"
           >
             <span className="text-lg">
@@ -442,12 +438,12 @@ Ran `npm test` and all 125 tests passed, including the new goal inference patter
             {voice.isCapturing
               ? 'Listening... Tap to stop'
               : voice.isConnected
-              ? 'Tap to speak'
-              : 'Start Voice Session'}
+                ? 'Tap to speak'
+                : 'Start Voice Session'}
           </button>
 
           {/* Goal Input */}
-          {mode !== 'environment' && (
+          {mode !== 'environment' && false && (
             <>
               {goal && (
                 <div className="px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400 text-xs font-bold uppercase tracking-tight">
@@ -476,6 +472,9 @@ Ran `npm test` and all 125 tests passed, including the new goal inference patter
         </div>
 
         {/* Debug Panel */}
+
+        {/* Mode Selector */}
+        <ModeSelector currentMode={mode} onModeChange={setMode} />
         <div className="flex items-center justify-between">
           <button
             onClick={() => setShowDebug(!showDebug)}
