@@ -28,7 +28,7 @@ interface ClientMessage {
   audio?: string; // base64-encoded PCM audio
   text?: string;
   toolUseId?: string;
-  toolResult?: string;
+  toolResult?: string | Record<string, unknown>;
   memoryContext?: string;
 }
 

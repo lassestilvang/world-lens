@@ -13,7 +13,7 @@ export interface UseVoiceSessionReturn {
   /** Send text (fallback when mic unavailable) */
   sendText: (text: string) => void;
   /** Send a tool result back to Sonic */
-  sendToolResult: (toolUseId: string, result: string) => void;
+  sendToolResult: (toolUseId: string, result: string | Record<string, unknown>) => void;
   /** Interrupt current playback */
   interrupt: () => void;
   /** Whether connected to the WebSocket */
@@ -184,7 +184,7 @@ export function useVoiceSession(
     }
   }, []);
 
-  const sendToolResult = useCallback((toolUseId: string, result: string) => {
+  const sendToolResult = useCallback((toolUseId: string, result: string | Record<string, unknown>) => {
     if (sessionRef.current) {
       sessionRef.current.sendToolResult(toolUseId, result);
     }

@@ -384,14 +384,18 @@ function createTextEvent(config: {
 function createToolResultEvent(config: {
   promptName: string;
   contentName: string;
-  result: string;
+  result: string | Record<string, unknown>;
 }): object {
+  const contentStr = typeof config.result === 'string'
+    ? JSON.stringify({ result: config.result })
+    : JSON.stringify(config.result);
+
   return {
     event: {
       toolResult: {
         promptName: config.promptName,
         contentName: config.contentName,
-        content: config.result,
+        content: contentStr,
         status: 'success',
       },
     },
@@ -1090,7 +1094,7 @@ export class VoiceSession {
   /**
    * Send a tool result back to the Sonic session.
    */
-  sendToolResult(toolUseId: string, result: string): void {
+  sendToolResult(toolUseId: string, result: string | Record<string, unknown>): void {
     if (!this.isActive) return;
     const contentName = createId('tool');
     this.inputQueue.push(
