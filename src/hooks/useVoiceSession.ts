@@ -210,8 +210,19 @@ export function useVoiceSession(
     const buffer = new Uint8Array(analyzer.fftSize);
     const threshold = 50; // Simple threshold for barge-in
 
+    let wasSpeaking = false;
     const checkVolume = () => {
       if (analyzer && sessionRef.current) {
+        const currentlySpeaking = sessionRef.current.isSpeaking;
+        const now = Date.now();
+        
+        // Reset grace period when the assistant STARTS speaking
+        if (currentlySpeaking && !wasSpeaking) {
+           console.info('[useVoiceSession] Assistant started speaking, resetting barge-in grace period.');
+           lastInterruptRef.current = now;
+        }
+        wasSpeaking = currentlySpeaking;
+
         const dataArray = new Uint8Array(analyzer.frequencyBinCount);
         analyzer.getByteFrequencyData(dataArray);
         const average = dataArray.reduce((p, c) => p + c, 0) / dataArray.length;
@@ -221,12 +232,11 @@ export function useVoiceSession(
                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
         
         // On iOS, echo cancellation often leaks more audio. Increase threshold.
-        const effectiveThreshold = isIOS ? 80 : 60;
+        const effectiveThreshold = isIOS ? 85 : 60;
         
         // Only barge-in if assistant is actually speaking and user is loud enough
-        // We also add a small grace period (300ms) after the assistant starts speaking to avoid initial echo spikes
-        const now = Date.now();
-        if (sessionRef.current.isSpeaking && average > effectiveThreshold && now - lastInterruptRef.current > 1000) {
+        // We add a safety buffer (1000ms) after playback starts OR after a previous interruption
+        if (currentlySpeaking && average > effectiveThreshold && now - lastInterruptRef.current > 1000) {
            console.info(`[useVoiceSession] VAD Barge-in detected (avg: ${Math.round(average)}, platform: ${isIOS ? 'iOS' : 'Other'})`);
            lastInterruptRef.current = now;
            sessionRef.current.interrupt('vad_barge_in');

@@ -211,7 +211,7 @@ function getSonicTools() {
   ];
 }
 
-function createSessionStartEvent(): object {
+function createSessionStartEvent(config?: { sensitivity?: string }): object {
   return {
     event: {
       sessionStart: {
@@ -221,7 +221,7 @@ function createSessionStartEvent(): object {
           temperature: 0.7,
         },
         turnDetectionConfiguration: {
-          endpointingSensitivity: 'MEDIUM',
+          endpointingSensitivity: config?.sensitivity || 'MEDIUM',
         },
       },
     },
@@ -706,7 +706,13 @@ export class VoiceSession {
     const systemPrompt = buildSystemPrompt(this.config.memoryContext, this.config.userGoal);
     const systemContentName = createId('system');
 
-    yield this.encodeInput(createSessionStartEvent());
+    const isIOS = typeof navigator !== 'undefined' && 
+                 (/iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+
+    yield this.encodeInput(createSessionStartEvent({ 
+      sensitivity: isIOS ? 'LOW' : 'MEDIUM' 
+    }));
     this.markInputSent();
     yield this.encodeInput(
       createPromptStartEvent({
