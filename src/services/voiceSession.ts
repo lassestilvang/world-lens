@@ -83,7 +83,7 @@ CRITICAL RULES:
   } else {
     prompt += '\n\nThe user has NOT yet set a goal. Ask them what they are looking for and use the "update_memory" tool to set their goal once you know it.';
   }
-  prompt += '\n\nIMPORTANT: If the user changes their task or goal vocally, you MUST use the "update_memory" tool with the "userGoal" parameter to update the system. This ensures the visual processing stays aligned with the user\'s needs.';
+  prompt += '\n\nIMPORTANT: If the user changes their task or goal vocally, you MUST use the "update_memory" tool with the "userGoal" parameter to update the system. Immediately after calling the tool, YOU MUST vocally acknowledge the change to the user and explain how you will help. Do NOT remain silent after a goal update.';
   if (memoryContext) {
     prompt += `\n\nCurrent World Memory:\n${memoryContext}`;
   }

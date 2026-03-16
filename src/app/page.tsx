@@ -321,7 +321,7 @@ Ran `npm test` and all 125 tests passed, including the new goal inference patter
           setGoal(newGoal);
         }
 
-        voice.sendToolResult(toolUseId, 'Memory and goals updated.');
+        voice.sendToolResult(toolUseId, `Memory and goals updated. The new goal is: "${newGoal || 'none'}". Please acknowledge this to the user vocally.`);
       }
     }
   }, [voice.lastToolCall, lastAnalysis, voice.sendToolResult]);
