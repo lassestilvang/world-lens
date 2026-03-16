@@ -29,7 +29,7 @@ export default function DebugPanel({
 
   return (
     <div
-      className="bg-zinc-900/95 backdrop-blur-sm border border-zinc-700 rounded-2xl overflow-hidden shadow-2xl"
+      className="bg-zinc-900/95 backdrop-blur-sm border border-zinc-700 rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 ease-in-out"
       data-testid="debug-panel"
     >
       {/* Header */}
@@ -64,7 +64,7 @@ export default function DebugPanel({
 
       {/* Body */}
       {expanded && (
-        <div className="p-3 space-y-3 max-h-64 overflow-y-auto">
+        <div className="p-3 space-y-3">
           {/* Latency */}
           {latencyMs !== undefined && latencyMs !== null && (
             <div>
@@ -89,7 +89,7 @@ export default function DebugPanel({
           {lastAnalysis && (
             <div>
               <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">Last Analysis</span>
-              <pre className="text-[10px] font-mono text-purple-300 mt-0.5 bg-zinc-950 rounded-lg p-2 overflow-x-auto max-h-24 overflow-y-auto">
+              <pre className="text-[10px] font-mono text-purple-300 mt-0.5 bg-zinc-950 rounded-lg p-2 overflow-x-auto">
 {JSON.stringify(lastAnalysis, null, 2)}
               </pre>
             </div>
@@ -103,7 +103,7 @@ export default function DebugPanel({
             {memory.length === 0 ? (
               <p className="text-[10px] text-zinc-600 mt-0.5 italic">No observations yet</p>
             ) : (
-              <pre className="text-[10px] font-mono text-emerald-300 mt-0.5 bg-zinc-950 rounded-lg p-2 overflow-x-auto max-h-32 overflow-y-auto">
+              <pre className="text-[10px] font-mono text-emerald-300 mt-0.5 bg-zinc-950 rounded-lg p-2 overflow-x-auto">
 {JSON.stringify(memory, null, 2)}
               </pre>
             )}

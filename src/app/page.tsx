@@ -343,7 +343,7 @@ Ran `npm test` and all 125 tests passed, including the new goal inference patter
   }, [voice.isGrounded, voice.isConnected, voice.sendText]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-zinc-950 text-white relative overflow-hidden safe-area-padding">
+    <main className="flex min-h-screen flex-col items-center justify-start py-8 px-4 bg-zinc-950 text-white relative overflow-y-auto safe-area-padding">
       <div className="w-full max-w-md flex flex-col gap-4 z-10">
         {/* Header */}
         <header className="flex flex-row items-center gap-4 bg-zinc-900/40 p-4 rounded-3xl border border-zinc-800/50 backdrop-blur-sm">
