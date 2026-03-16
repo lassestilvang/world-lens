@@ -216,11 +216,18 @@ export function useVoiceSession(
         analyzer.getByteFrequencyData(dataArray);
         const average = dataArray.reduce((p, c) => p + c, 0) / dataArray.length;
         
+        // Detect iOS/iPadOS environment
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        
+        // On iOS, echo cancellation often leaks more audio. Increase threshold.
+        const effectiveThreshold = isIOS ? 80 : 60;
+        
         // Only barge-in if assistant is actually speaking and user is loud enough
-        // This prevents ambient noise or the user's initial prompt from killing the AI's response turn
+        // We also add a small grace period (300ms) after the assistant starts speaking to avoid initial echo spikes
         const now = Date.now();
-        if (sessionRef.current.isSpeaking && average > 60 && now - lastInterruptRef.current > 500) {
-           console.info(`[useVoiceSession] VAD Barge-in detected (avg: ${Math.round(average)})`);
+        if (sessionRef.current.isSpeaking && average > effectiveThreshold && now - lastInterruptRef.current > 1000) {
+           console.info(`[useVoiceSession] VAD Barge-in detected (avg: ${Math.round(average)}, platform: ${isIOS ? 'iOS' : 'Other'})`);
            lastInterruptRef.current = now;
            sessionRef.current.interrupt('vad_barge_in');
         }
