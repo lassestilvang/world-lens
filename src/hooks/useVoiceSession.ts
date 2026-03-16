@@ -10,8 +10,8 @@ export interface UseVoiceSessionReturn {
   endSession: () => Promise<void>;
   /** Toggle microphone capture */
   toggleCapture: () => Promise<void>;
-  /** Send text (fallback when mic unavailable or for system instructions) */
-  sendText: (text: string, role?: 'USER' | 'SYSTEM') => void;
+  /** Send text (fallback when mic unavailable) */
+  sendText: (text: string) => void;
   /** Send a tool result back to Sonic */
   sendToolResult: (toolUseId: string, result: string | Record<string, unknown>) => void;
   /** Interrupt current playback */
@@ -178,9 +178,9 @@ export function useVoiceSession(
     }
   }, [isCapturing]);
 
-  const sendText = useCallback((text: string, role?: 'USER' | 'SYSTEM') => {
+  const sendText = useCallback((text: string) => {
     if (sessionRef.current) {
-      sessionRef.current.sendText(text, role);
+      sessionRef.current.sendText(text);
     }
   }, []);
 

@@ -94,8 +94,7 @@ export default function Page() {
 
       if (voice.isConnected && voice.isGrounded) {
         voice.sendText(
-          `The user has manually set a goal: "${trimmedGoal}". Please acknowledge this and explain how you will help.`,
-          'SYSTEM'
+          `[System Observation] The user has manually set a goal: "${trimmedGoal}". Please acknowledge this and explain how you will help.`
         );
       }
     }
@@ -306,9 +305,9 @@ export default function Page() {
       greetingSentRef.current = true;
       const currentGoal = goalRef.current;
       const greetingInstruction = currentGoal 
-        ? `Please greet the user warmly. They have a goal: "${currentGoal}". Briefly acknowledge it and ask how you can assist.`
-        : "Please greet the user warmly and ask what they would like help with today.";
-      voice.sendText(greetingInstruction, 'SYSTEM');
+        ? `[System Observation] Please greet the user warmly. They have a goal: "${currentGoal}". Briefly acknowledge it and ask how you can assist.`
+        : "[System Observation] Please greet the user warmly and ask what they would like help with today.";
+      voice.sendText(greetingInstruction);
     } else if (!voice.isConnected) {
       greetingSentRef.current = false;
     }

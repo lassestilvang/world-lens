@@ -809,6 +809,10 @@ export class VoiceSession {
             return;
           }
           if (role === 'USER') {
+            // Filter out system internal observations from the transcript
+            if (trimmed.startsWith('[System Observation]')) {
+              return;
+            }
             this.emit({ type: 'transcript', text: textData.content });
           } else {
             this.emit({ type: 'text', text: textData.content });
@@ -1049,22 +1053,22 @@ export class VoiceSession {
   /**
    * Send a text message to the Sonic session.
    */
-  sendText(text: string, role: 'USER' | 'SYSTEM' = 'USER'): void {
+  sendText(text: string): void {
     if (!this.isActive) {
       this.emit({ type: 'error', error: 'Not connected' });
       return;
     }
 
     const contentName = createId('text');
-    console.info(`[VoiceSession] Sending text [${role}]: "${text}"`);
+    console.info(`[VoiceSession] Sending text: "${text}"`);
     this.inputQueue.push(
       this.encodeInput(
         createContentStartEvent({
           promptName: this.promptName,
           contentName,
           type: 'TEXT',
-          interactive: role === 'USER',
-          role: role,
+          interactive: true,
+          role: 'USER',
         })
       )
     );
