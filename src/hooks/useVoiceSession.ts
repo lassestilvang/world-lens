@@ -15,7 +15,7 @@ export interface UseVoiceSessionReturn {
   /** Send a tool result back to Sonic */
   sendToolResult: (toolUseId: string, result: string | Record<string, unknown>) => void;
   /** Interrupt current playback */
-  interrupt: () => void;
+  interrupt: (reason?: string) => void;
   /** Whether connected to the WebSocket */
   isConnected: boolean;
   /** Whether microphone is capturing */
@@ -193,9 +193,9 @@ export function useVoiceSession(
     }
   }, []);
 
-  const interrupt = useCallback(() => {
+  const interrupt = useCallback((reason: string = 'manual') => {
     if (sessionRef.current) {
-      sessionRef.current.interrupt();
+      sessionRef.current.interrupt(reason);
     }
   }, []);
 
@@ -215,7 +215,7 @@ export function useVoiceSession(
         const average = dataArray.reduce((p, c) => p + c, 0) / dataArray.length;
         
         if (average > 30) {
-           sessionRef.current.interrupt();
+           sessionRef.current.interrupt('vad_barge_in');
         }
       }
       rafVolume = requestAnimationFrame(checkVolume);

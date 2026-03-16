@@ -493,9 +493,11 @@ export class VoiceSession {
 
   private shouldSuppressAssistantOutput(completionId?: string, contentId?: string): boolean {
     if (completionId && this.interruptedCompletionIds.has(completionId)) {
+      console.info(`[VoiceSession] Suppressing completion ${completionId} (interrupted)`);
       return true;
     }
     if (contentId && this.suppressedAssistantContentIds.has(contentId)) {
+      console.info(`[VoiceSession] Suppressing content ${contentId} (interrupted)`);
       return true;
     }
     return false;
@@ -1142,8 +1144,8 @@ export class VoiceSession {
   /**
    * Interrupt current audio playback and clear pending queues.
    */
-  interrupt(): void {
-    console.info('[VoiceSession] Interrupting playback...');
+  interrupt(reason: string = 'manual'): void {
+    console.info(`[VoiceSession] Interrupting playback... Reason: ${reason}`);
 
     this.markActiveAssistantOutputAsInterrupted();
     this.stopPlayback();

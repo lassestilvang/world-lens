@@ -197,13 +197,11 @@ Ran `npm test` and all 125 tests passed, including the new goal inference patter
                 lastSpokenObservationRef.current = { text: observation, timestamp: now };
                 
                 // Only interrupt if not already speaking to avoid annoying mid-sentence breaks
-                if (!voiceSpeakingRef.current) {
-                  voice.interrupt();
-                  voice.sendText(`${observation} Please tell the user this immediately in one short sentence.`);
-                } else {
-                  // If speaking, just send the text so she can mention it after finishing or if she checks her history
-                  voice.sendText(`${observation} Mention this when you have a moment.`);
+                if (voiceSpeakingRef.current) {
+                  console.info('[Page] Interrupting active AI speech for sighting');
+                  voice.interrupt('proactive_sighting');
                 }
+                voice.sendText(`${observation} Please tell the user this immediately in one short sentence.`);
               } else {
                 pendingObservationRef.current = observation;
               }
@@ -220,7 +218,7 @@ Ran `npm test` and all 125 tests passed, including the new goal inference patter
       if (isImmediateHazard(objects)) {
         const hazard = objects.find((o: string) => o.includes('red') || o.includes('obstacle'));
         setLastSuggestion(`Hazard Detected: ${hazard}`);
-        voice.interrupt();
+        voice.interrupt('hazard_detected');
         playEarcon('chime');
       }
 
@@ -259,10 +257,13 @@ Ran `npm test` and all 125 tests passed, including the new goal inference patter
             setLastSuggestion(suggestionResult.suggestionPrompt);
             playEarcon('chime');
             if (voiceConnectedRef.current) {
-              voice.interrupt();
-              voice.sendText(
-                `[System Observation] ${suggestionResult.suggestionPrompt} Please tell the user this immediately in one concise sentence.`
-              );
+              if (voiceSpeakingRef.current) {
+              console.info('[Page] Interrupting active AI speech for proactive advice');
+              voice.interrupt('proactive_advice');
+            }
+            voice.sendText(
+              `[System Observation] ${suggestionResult.suggestionPrompt} Please tell the user this immediately in one concise sentence.`
+            );
             }
           }
         }
