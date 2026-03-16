@@ -319,6 +319,17 @@ export default function Page() {
               {mode} Mode
             </p>
           </div>
+          
+          {/* Status Indicator */}
+          <div
+            className="ml-auto flex items-center gap-2 px-3 py-1.5 bg-zinc-950/50 rounded-full border border-zinc-800/50 backdrop-blur"
+            data-testid="status-indicator"
+          >
+            <div className={`w-2 h-2 rounded-full ${isProcessing ? 'bg-amber-500 animate-pulse' : 'bg-green-500'}`} />
+            <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">
+              {isProcessing ? 'Processing' : 'Live'}
+            </span>
+          </div>
         </header>
 
         {/* Camera + Overlays */}
@@ -466,18 +477,6 @@ export default function Page() {
           </div>
         )}
 
-        {/* Status Footer */}
-        <footer className="flex flex-col items-center gap-2 pb-4">
-          <div
-            className="flex items-center gap-3 px-5 py-2.5 bg-zinc-900/50 rounded-full border border-zinc-800 backdrop-blur"
-            data-testid="status-indicator"
-          >
-            <div className={`w-2.5 h-2.5 rounded-full ${isProcessing ? 'bg-amber-500 animate-pulse' : 'bg-green-500'}`} />
-            <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-400">
-              {isProcessing ? 'Processing' : 'Live Loop'}
-            </span>
-          </div>
-        </footer>
       </div>
     </main>
   );
