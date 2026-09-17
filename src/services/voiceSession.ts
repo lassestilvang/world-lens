@@ -940,6 +940,9 @@ export class VoiceSession {
 
     try {
       this.audioContext = new AudioContext({ sampleRate: 16000 });
+      if (this.audioContext.state === 'suspended') {
+        await this.audioContext.resume();
+      }
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 16000,
